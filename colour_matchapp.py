@@ -4,7 +4,7 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (STABILISASI TOMBOL & FONT) ---
+# --- 2. CSS CUSTOM (KARTU LEBIH KECIL & RAPI) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
@@ -14,9 +14,9 @@ st.markdown("""
     .title-text {
         text-align: center; 
         font-family: 'Bungee Shade', cursive; 
-        font-size: 35px; 
+        font-size: 30px; 
         color: white; 
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
 
     .desc-text {
@@ -27,41 +27,29 @@ st.markdown("""
         border-radius: 12px;
         border: 1px solid #555;
         margin-bottom: 20px;
-        font-size: 14px;
-        line-height: 1.5;
+        font-size: 13px;
     }
 
-    /* Styling tombol level agar terlihat jelas */
-    .stButton > button {
-        border-radius: 10px !important;
-        font-weight: bold !important;
-        height: 50px !important;
-    }
-
-    /* Khusus untuk tombol kartu di dalam game */
-    .game-card-btn > div > button {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 120px !important;
-        width: 100% !important;
-        background-color: transparent !important;
-        border: none !important;
-        color: transparent !important;
-        z-index: 10;
-    }
-
+    /* Ukuran kartu yang lebih kecil untuk HP */
     .card-slot {
-        height: 120px;
+        height: 60px;
         width: 100%;
-        border-radius: 12px;
+        border-radius: 8px;
         border: 2px solid #555;
-        margin-bottom: 10px;
+        margin-bottom: 8px; /* Jarak antara kartu dan tombol di bawahnya */
+    }
+
+    /* Styling tombol ganti warna agar kecil dan pas di tengah */
+    .stButton > button {
+        width: 100% !important;
+        border-radius: 5px !important;
+        padding: 2px !important;
+        font-size: 12px !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNGSI LOGIKA ---
+# --- 3. LOGIKA GAME ---
 WARNA_LIST = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 WARNA_HEX = {"Kosong": "#333333", "Merah": "#FF0000", "Oren": "#FFA500", "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF"}
 
@@ -99,57 +87,48 @@ def hitung_feedback(guess, target):
         if g_temp[i] != "DONE_G" and g_temp[i] in t_temp:
             s += 1
             t_temp[t_temp.index(g_temp[i])] = "DONE_T"
-    return f"{b} warna benar, {s} salah posisi, {len(target)-(b+s)} salah"
+    return f"{b} Benar, {s} Salah Posisi"
 
 # --- 4. TAMPILAN ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    # Deskripsi Cara Bermain
     st.markdown("""
     <div class="desc-text">
         <strong>🎯 CARA BERMAIN:</strong><br>
-        1. Pilih level di bawah untuk memulai.<br>
-        2. Klik kotak kartu untuk ganti warna.<br>
-        3. Tebak kombinasi warna rahasia.<br>
-        4. Gunakan feedback riwayat untuk menang!
+        1. Pilih level untuk mulai.<br>
+        2. Klik tombol 🔄 di bawah kotak untuk ganti warna.<br>
+        3. Tekan OK untuk cek hasil.
     </div>
     """, unsafe_allow_html=True)
 
-    st.write("### 🕹️ PILIH TINGKAT KESULITAN:")
-    
-    # Tombol dibuat satu-satu tanpa kolom agar tidak tertutup CSS transparan
-    if st.button("🟢 MUDAH (3 KARTU)", use_container_width=True, key="m_btn"):
-        start_game("Mudah")
-        st.rerun()
-    if st.button("🟡 SEDANG (4 KARTU)", use_container_width=True, key="s_btn"):
-        start_game("Sedang")
-        st.rerun()
-    if st.button("🔴 SULIT (5 KARTU)", use_container_width=True, key="sl_btn"):
-        start_game("Sulit")
-        st.rerun()
+    st.write("### 🕹️ PILIH LEVEL:")
+    if st.button("🟢 MUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
+    if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
+    if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
+
 else:
-    if st.sidebar.button("🔙 GANTI LEVEL"):
+    if st.sidebar.button("🔙 MENU UTAMA"):
         st.session_state.game_active = False
         st.rerun()
 
-    st.write(f"**Warna mungkin muncul:**")
+    # Petunjuk Warna
+    st.write(f"**Pilihan Warna:**")
     h_cols = st.columns(len(st.session_state.pool))
     for idx, h in enumerate(st.session_state.pool):
-        h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:15px; border:1px solid white;'></div>", unsafe_allow_html=True)
+        h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:10px; border:1px solid white;'></div>", unsafe_allow_html=True)
 
     st.write("---")
 
-    # KARTU GAME (Hanya di sini CSS transparan bekerja)
+    # SLOT KARTU & TOMBOL HORIZONTAL
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
+            # Visual Warna
             current_color = WARNA_HEX[st.session_state.guesses[i]]
             st.markdown(f'<div class="card-slot" style="background-color:{current_color};"></div>', unsafe_allow_html=True)
-            # Menggunakan class khusus agar tidak merusak tombol level di depan
-            st.markdown('<div class="game-card-btn">', unsafe_allow_html=True)
-            st.button(" ", key=f"slot_btn_{i}", on_click=ganti_warna, args=(i,))
-            st.markdown('</div>', unsafe_allow_html=True)
+            # Tombol Ganti Warna di bawah masing-masing kartu
+            st.button("🔄", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
     st.write("")
     if st.button("CEK JAWABAN (OK) ✅", key="ok_main", use_container_width=True):
