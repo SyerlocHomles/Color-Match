@@ -4,7 +4,7 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (FONT UNIK & DESKRIPSI) ---
+# --- 2. CSS CUSTOM (FONT PUTIH & KARTU KLIK) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
@@ -14,9 +14,9 @@ st.markdown("""
     .title-text {
         text-align: center; 
         font-family: 'Bungee Shade', cursive; 
-        font-size: 45px; 
+        font-size: 40px; 
         color: white; 
-        margin-bottom: 10px;
+        margin-bottom: 20px;
     }
 
     .desc-text {
@@ -26,7 +26,7 @@ st.markdown("""
         padding: 20px;
         border-radius: 15px;
         border: 1px solid #555;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         line-height: 1.6;
     }
 
@@ -63,12 +63,9 @@ if 'game_active' not in st.session_state:
     st.session_state.history = []
 
 def start_game(mode):
-    if mode == "Mudah": 
-        k, w_count = 3, 3
-    elif mode == "Sedang": 
-        k, w_count = 4, 4
-    else: 
-        k, w_count = 5, 5
+    if mode == "Mudah": k, w_count = 3, 3
+    elif mode == "Sedang": k, w_count = 4, 4
+    else: k, w_count = 5, 5
     
     pool = random.sample(WARNA_LIST, w_count)
     st.session_state.target = [random.choice(pool) for _ in range(k)]
@@ -102,7 +99,7 @@ def hitung_feedback(guess, target):
     salah_warna = len(target) - (benar_posisi + salah_posisi)
     return f"{benar_posisi} warna benar, {salah_posisi} warna salah posisi, {salah_warna} warna salah"
 
-# --- 4. TAMPILAN ---
+# --- 4. TAMPILAN UTAMA ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
@@ -112,20 +109,26 @@ if not st.session_state.game_active:
         <strong>🎯 CARA BERMAIN:</strong><br>
         1. Pilih tingkat kesulitan di bawah.<br>
         2. Klik kotak kartu untuk mengganti warnanya.<br>
-        3. Tebak urutan warna yang disembunyikan komputer.<br>
-        4. Tekan tombol OK untuk melihat hasil feedback.<br>
-        5. Warna benar = Posisi dan Warna tepat.<br>
-        6. Salah posisi = Warna ada tapi tempatnya salah.
+        3. Tebak urutan warna rahasia komputer.<br>
+        4. Tekan OK untuk melihat feedback.<br>
+        5. Warna benar = Posisi & Warna tepat.<br>
+        6. Salah posisi = Warna ada tapi tempat salah.
     </div>
     """, unsafe_allow_html=True)
 
     st.write("### 🕹️ PILIH TINGKAT KESULITAN:")
-    c1, c2, c3 = st.columns(3)
-    if c1.button("MUDAH (3)", key="m_btn"): start_game("Mudah")
-    if c2.button("SEDANG (4)", key="s_btn"): start_game("Sedang")
-    if c3.button("SULIT (5)", key="sl_btn"): start_game("Sulit")
+    # Tombol diletakkan di luar kolom agar lebih stabil di HP
+    if st.button("🟢 MUDAH (3 KARTU)", use_container_width=True, key="m_btn"):
+        start_game("Mudah")
+        st.rerun()
+    if st.button("🟡 SEDANG (4 KARTU)", use_container_width=True, key="s_btn"):
+        start_game("Sedang")
+        st.rerun()
+    if st.button("🔴 SULIT (5 KARTU)", use_container_width=True, key="sl_btn"):
+        start_game("Sulit")
+        st.rerun()
 else:
-    # Tombol Reset di Sidebar
+    # Sidebar untuk reset
     if st.sidebar.button("🔙 GANTI LEVEL"):
         st.session_state.game_active = False
         st.rerun()
@@ -146,7 +149,8 @@ else:
             st.button("", key=f"slot_btn_{i}", on_click=ganti_warna, args=(i,))
 
     st.write("")
-    if st.button("CEK JAWABAN (OK) ✅", key="final_ok_btn", use_container_width=True):
+    # Tombol OK utama
+    if st.button("CEK JAWABAN ✅", use_container_width=True, key="ok_main"):
         if "Kosong" not in st.session_state.guesses:
             teks = hitung_feedback(st.session_state.guesses, st.session_state.target)
             st.session_state.history.append({'g': list(st.session_state.guesses), 'f': teks})
