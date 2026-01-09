@@ -52,27 +52,28 @@ def ganti_warna(i):
 def hitung_feedback(guess, target):
     benar_posisi = 0
     salah_posisi = 0
-    salah_warna = 0
     
     t_temp = list(target)
     g_temp = list(guess)
     
-    # 1. Cek Benar Posisi
+    # Langkah 1: Hitung yang BENAR POSISI (Hijau)
+    # Kita harus buang dulu yang benar supaya tidak terhitung dua kali di langkah berikutnya
     for i in range(len(g_temp)):
         if g_temp[i] == t_temp[i]:
             benar_posisi += 1
-            t_temp[i] = None
-            g_temp[i] = "DONE"
+            t_temp[i] = None # Tandai sudah terpakai
+            g_temp[i] = None # Tandai sudah dicek
             
-    # 2. Cek Salah Posisi vs Salah Warna
+    # Langkah 2: Hitung yang SALAH POSISI (Oren)
     for i in range(len(g_temp)):
-        if g_temp[i] != "DONE":
+        if g_temp[i] is not None: # Hanya cek yang belum benar posisinya
             if g_temp[i] in t_temp:
                 salah_posisi += 1
-                t_temp[t_temp.index(g_temp[i])] = None
-            else:
-                salah_warna += 1
+                t_temp[t_temp.index(g_temp[i])] = None # Buang warna yang sudah "dipasangkan"
                 
+    # Langkah 3: Sisanya adalah SALAH WARNA (Merah)
+    salah_warna = len(target) - (benar_posisi + salah_posisi)
+    
     return f"{benar_posisi} warna benar, {salah_posisi} warna salah posisi, {salah_warna} warna salah"
 
 # --- 4. TAMPILAN ---
