@@ -7,7 +7,7 @@ st.set_page_config(page_title="Colour Match Master", layout="centered")
 # --- 2. CSS CUSTOM (FONT UNIK & DESKRIPSI) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
 
     #MainMenu, footer, header {visibility: hidden;}
     
@@ -39,6 +39,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
+    /* Tombol transparan menutupi kartu */
     .stButton > button {
         position: absolute;
         top: 0;
@@ -62,9 +63,12 @@ if 'game_active' not in st.session_state:
     st.session_state.history = []
 
 def start_game(mode):
-    if mode == "Mudah": k, w_count = 3, 3
-    elif mode == "Sedang": k, w_count = 4, 4
-    else: k, w_count = 5, 5
+    if mode == "Mudah": 
+        k, w_count = 3, 3
+    elif mode == "Sedang": 
+        k, w_count = 4, 4
+    else: 
+        k, w_count = 5, 5
     
     pool = random.sample(WARNA_LIST, w_count)
     st.session_state.target = [random.choice(pool) for _ in range(k)]
@@ -84,14 +88,17 @@ def hitung_feedback(guess, target):
     t_temp = list(target)
     g_temp = list(guess)
     benar_posisi, salah_posisi = 0, 0
+    
     for i in range(len(t_temp)):
         if g_temp[i] == t_temp[i]:
             benar_posisi += 1
             t_temp[i], g_temp[i] = "DONE_T", "DONE_G"
+            
     for i in range(len(g_temp)):
         if g_temp[i] != "DONE_G" and g_temp[i] in t_temp:
             salah_posisi += 1
             t_temp[t_temp.index(g_temp[i])] = "DONE_T"
+            
     salah_warna = len(target) - (benar_posisi + salah_posisi)
     return f"{benar_posisi} warna benar, {salah_posisi} warna salah posisi, {salah_warna} warna salah"
 
@@ -99,36 +106,38 @@ def hitung_feedback(guess, target):
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    # DESKRIPSI CARA BERMAIN
+    # DESKRIPSI CARA BERMAIN (FONT PUTIH)
     st.markdown("""
     <div class="desc-text">
         <strong>🎯 CARA BERMAIN:</strong><br>
-        1. Pilih tingkat kesulitan untuk menentukan jumlah kartu.<br>
-        2. Klik pada kotak kartu untuk mengganti warnanya.<br>
-        3. Gunakan petunjuk warna di bagian atas untuk mengetahui warna apa saja yang mungkin muncul.<br>
-        4. Tekan tombol <strong>OK</strong> untuk mengecek tebakanmu.<br>
-        5. Perhatikan kalimat riwayat untuk membantumu memecahkan kode warna!
+        1. Pilih tingkat kesulitan di bawah.<br>
+        2. Klik kotak kartu untuk mengganti warnanya.<br>
+        3. Tebak urutan warna yang disembunyikan komputer.<br>
+        4. Tekan tombol OK untuk melihat hasil feedback.<br>
+        5. Warna benar = Posisi dan Warna tepat.<br>
+        6. Salah posisi = Warna ada tapi tempatnya salah.
     </div>
     """, unsafe_allow_html=True)
 
     st.write("### 🕹️ PILIH TINGKAT KESULITAN:")
     c1, c2, c3 = st.columns(3)
-    # Gunakan on_click agar state langsung berubah
-    c1.button("MUDAH (3)", on_click=start_game, args=("Mudah",), key="m_btn")
-    c2.button("SEDANG (4)", on_click=start_game, args=("Sedang",), key="s_btn")
-    c3.button("SULIT (5)", on_click=start_game, args=("Sulit",), key="sl_btn")
+    if c1.button("MUDAH (3)", key="m_btn"): start_game("Mudah")
+    if c2.button("SEDANG (4)", key="s_btn"): start_game("Sedang")
+    if c3.button("SULIT (5)", key="sl_btn"): start_game("Sulit")
 else:
-    # Sidebar untuk reset
-    st.sidebar.button("🔙 GANTI LEVEL", on_click=lambda: st.session_state.update({"game_active": False}))
+    # Tombol Reset di Sidebar
+    if st.sidebar.button("🔙 GANTI LEVEL"):
+        st.session_state.game_active = False
+        st.rerun()
 
-    st.write(f"**Warna yang mungkin muncul ({st.session_state.max_k} kartu):**")
+    st.write(f"**Petunjuk warna ({st.session_state.max_k} kartu):**")
     h_cols = st.columns(len(st.session_state.pool))
     for idx, h in enumerate(st.session_state.pool):
         h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:20px; border:1px solid white;'></div>", unsafe_allow_html=True)
 
     st.write("---")
 
-    # KARTU INTERAKTIF
+    # SLOT KARTU INTERAKTIF
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
