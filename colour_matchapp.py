@@ -1,119 +1,165 @@
 import streamlit as st
 import random
 
-# --- STYLE CSS AGAR MIRIP SKETSA ---
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Guess Color Master", layout="centered")
+
+# --- CSS UNTUK PRESISI POSISI (SESUAI SKETSA) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #FFFFFF; }
-    .card-slot {
-        border: 2px solid #000;
-        border-radius: 15px;
-        height: 120px;
-        width: 80px;
+    /* Container utama agar seperti papan game */
+    .game-container {
+        position: relative;
+        width: 350px;
+        height: 600px;
         margin: auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #f9f9f9;
+        border: 3px solid #000;
+        border-radius: 20px;
+        padding: 20px;
+        background-color: white;
     }
-    .paku-container {
-        display: flex;
-        gap: 5px;
-        align-items: center;
+    
+    /* Angka sisa nyawa (Kiri Atas) */
+    .score-text {
+        position: absolute;
+        top: 20px; left: 30px;
+        font-size: 40px; font-weight: bold;
     }
-    .paku-dot {
-        width: 15px;
-        height: 15px;
-        border-radius: 50%;
-        border: 1px solid #000;
+
+    /* Warna petunjuk (Kanan Atas) */
+    .hint-container {
+        position: absolute;
+        top: 30px; right: 30px;
+        display: flex; gap: 10px;
     }
-    /* Tombol transparan di atas kotak kartu */
-    .stButton>button {
-        height: 120px;
-        background-color: transparent !important;
-        border: none !important;
-        color: transparent !important;
+    .hint-box {
+        width: 30px; height: 35px; border: 2px solid #000;
     }
+
+    /* 5 Kotak Utama (Tengah) */
+    .main-cards {
+        position: absolute;
+        top: 130px; left: 25px;
+        display: flex; gap: 8px;
+    }
+    .card {
+        width: 55px; height: 90px;
+        border: 2px solid #000; border-radius: 12px;
+    }
+
+    /* Area Paku dan Tombol OK (Bawah Kartu) */
+    .action-row {
+        position: absolute;
+        top: 240px; left: 20px;
+        width: 310px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .paku-box {
+        display: flex; gap: 4px;
+    }
+    .paku {
+        width: 12px; height: 12px; border-radius: 50%; border: 1px solid #000;
+    }
+    .ok-circle {
+        width: 40px; height: 40px; border: 2px solid #000;
+        border-radius: 50%; text-align: center; line-height: 36px;
+        font-weight: bold; cursor: pointer;
+    }
+
+    /* Menghilangkan header default streamlit agar rapi */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
 # --- LOGIKA GAME ---
-WARNA_MAP = {
+WARNA_LIST = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
+WARNA_HEX = {
     "Putih": "#FFFFFF", "Merah": "#FF0000", "Oren": "#FFA500", 
-    "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF"
+    "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF", "Abu": "#808080"
 }
-LIST_WARNA = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 
-if 'game' not in st.session_state:
-    st.session_state.game = {
-        'target': random.choices(LIST_WARNA, k=5),
-        'attempts': [],
-        'current_guess': ["Putih"] * 5,
-        'over': False
-    }
+if 'target' not in st.session_state:
+    st.session_state.target = random.choices(WARNA_LIST, k=5)
+    st.session_state.guesses = ["Putih"] * 5
+    st.session_state.attempts = []
 
-def handle_click(i):
-    if not st.session_state.game['over']:
-        curr = st.session_state.game['current_guess'][i]
-        next_idx = (LIST_WARNA.index(curr) + 1) % len(LIST_WARNA) if curr in LIST_WARNA else 0
-        st.session_state.game['current_guess'][i] = LIST_WARNA[next_idx]
+def ganti_warna(i):
+    current = st.session_state.guesses[i]
+    if current == "Putih": next_c = WARNA_LIST[0]
+    else: next_c = WARNA_LIST[(WARNA_LIST.index(current) + 1) % len(WARNA_LIST)]
+    st.session_state.guesses[i] = next_c
 
-# --- TAMPILAN ATAS (INFO) ---
-col_score, col_hints = st.columns([1, 2])
-with col_score:
-    st.markdown(f"### {10 - len(st.session_state.game['attempts'])}") # Angka 50 di sketsamu (Sisa Nyawa)
-with col_hints:
-    hints = sorted(list(set(st.session_state.game['target'])))
-    h_cols = st.columns(len(hints))
-    for idx, h in enumerate(hints):
-        h_cols[idx].markdown(f"<div style='background-color:{WARNA_MAP[h]}; height:30px; border:2px solid #000;'></div>", unsafe_allow_html=True)
+def setor_jawaban():
+    if "Putih" in st.session_state.guesses: return
+    
+    res = []
+    temp_target = st.session_state.target[:]
+    temp_guess = st.session_state.guesses[:]
 
-st.write("")
+    # 1. Hijau (Benar Posisi)
+    for i in range(5):
+        if temp_guess[i] == temp_target[i]:
+            res.append("Hijau")
+            temp_target[i] = None
+            temp_guess[i] = None
+    
+    # 2. Oren (Benar Warna, Salah Posisi)
+    for i in range(5):
+        if temp_guess[i] and temp_guess[i] in temp_target:
+            res.append("Oren")
+            temp_target[temp_target.index(temp_guess[i])] = None
+            temp_guess[i] = None
+    
+    # 3. Merah (Salah)
+    while len(res) < 5:
+        res.append("Merah")
+        
+    st.session_state.attempts.append({'c': list(st.session_state.guesses), 'p': res})
+    if st.session_state.guesses == st.session_state.target:
+        st.success("LEVEL UP!")
+        st.session_state.target = random.choices(WARNA_LIST, k=random.randint(3,5))
+        st.session_state.attempts = []
 
-# --- TAMPILAN TENGAH (5 KARTU) ---
+# --- RENDER TAMPILAN SESUAI SKETSA ---
+# Container Utama
+st.markdown('<div class="game-container">', unsafe_allow_html=True)
+
+# 1. Sisa Nyawa (Angka 50 di sketsamu)
+nyawa = 10 - len(st.session_state.attempts)
+st.markdown(f'<div class="score-text">{nyawa}</div>', unsafe_allow_html=True)
+
+# 2. Petunjuk Warna (Kanan Atas)
+hints = sorted(list(set(st.session_state.target)))
+h_html = "".join([f'<div class="hint-box" style="background-color:{WARNA_HEX[h]}"></div>' for h in hints])
+st.markdown(f'<div class="hint-container">{h_html}</div>', unsafe_allow_html=True)
+
+# 3. 5 Kotak Tengah (Kartu)
+st.markdown('<div class="main-cards">', unsafe_allow_html=True)
 cols = st.columns(5)
 for i in range(5):
     with cols[i]:
-        # Kotak warna
-        color = WARNA_MAP[st.session_state.game['current_guess'][i]]
-        st.markdown(f"<div class='card-slot' style='background-color:{color};'></div>", unsafe_allow_html=True)
-        # Tombol transparan untuk klik
-        st.button(" ", key=f"btn_{i}", on_click=handle_click, args=(i,))
+        st.markdown(f'<div class="card" style="background-color:{WARNA_HEX[st.session_state.guesses[i]]}"></div>', unsafe_allow_html=True)
+        st.button("🔄", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
+st.markdown('</div>', unsafe_allow_html=True)
 
-# --- TOMBOL OK ---
-col_space, col_ok = st.columns([4, 1])
-with col_ok:
-    if st.button("OK", key="ok_btn"):
-        # Logika Pengecekan Paku
-        guess = st.session_state.game['current_guess']
-        target = st.session_state.game['target']
-        
-        # Simulasi hasil paku sederhana
-        paku_result = []
-        for g, t in zip(guess, target):
-            if g == t: paku_result.append("#00FF00") # Hijau (Benar semua)
-            elif g in target: paku_result.append("#FFA500") # Oren (Benar warna)
-            else: paku_result.append("#FF0000") # Merah (Salah)
-        
-        st.session_state.game['attempts'].append({'guess': list(guess), 'paku': paku_result})
-        if guess == target:
-            st.success("Level Up!")
-            st.session_state.game['over'] = True
+# 4. Paku & Tombol OK (Baris Bawah Kartu)
+st.markdown('<div class="action-row">', unsafe_allow_html=True)
+# Menampilkan paku dari tebakan terakhir
+paku_html = ""
+if st.session_state.attempts:
+    last_paku = st.session_state.attempts[-1]['p']
+    paku_html = "".join([f'<div class="paku" style="background-color:{WARNA_HEX[p]}"></div>' for p in last_paku])
 
-st.write("---")
+st.markdown(f'<div class="paku-box">{paku_html}</div>', unsafe_allow_html=True)
+st.button("OK", on_click=setor_jawaban)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# --- RIWAYAT (PAKU DI KIRI) ---
-for att in reversed(st.session_state.game['attempts']):
-    c_paku, c_cards = st.columns([1, 3])
-    with c_paku:
-        paku_html = "<div class='paku-container'>"
-        for p_color in att['paku']:
-            paku_html += f"<div class='paku-dot' style='background-color:{p_color};'></div>"
-        paku_html += "</div>"
-        st.markdown(paku_html, unsafe_allow_html=True)
-    with c_cards:
-        card_html = "<div style='display:flex; gap:5px;'>"
-        for c_color in att['guess']:
-            card_html += f"<div style='width:20px; height:30px; background-color:{WARNA_MAP[c_color]}; border:1px solid #000;'></div>"
-        card_html += "</div>"
-        st.markdown(card_html, unsafe_allow_html=True)
+# 5. Riwayat (Scroll kebawah)
+st.write("<br><br><br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+st.write("--- **RIWAYAT TEBAKAN** ---")
+for a in reversed(st.session_state.attempts):
+    st.write(f"Paku: {' '.join(a['p'])}")
+
+st.markdown('</div>', unsafe_allow_html=True)
