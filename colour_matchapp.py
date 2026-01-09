@@ -4,7 +4,7 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (STYLING JARAK & KARTU) ---
+# --- 2. CSS CUSTOM (STYLING HP OPTIMIZED) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
@@ -23,33 +23,31 @@ st.markdown("""
         font-family: 'Space Mono', monospace;
         color: white;
         background-color: rgba(255, 255, 255, 0.1);
-        padding: 12px;
-        border-radius: 10px;
+        padding: 15px;
+        border-radius: 12px;
         border: 1px solid #555;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         font-size: 12px;
+        line-height: 1.6;
     }
 
-    /* Kartu warna yang lebih ramping */
     .card-slot {
         height: 50px;
         width: 100%;
         border-radius: 8px;
         border: 2px solid #555;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
     }
 
-    /* Memberi jarak ekstra setelah baris tombol ganti warna */
-    .spacing-box {
-        margin-bottom: 25px;
+    /* Jarak antara baris tombol ganti dengan tombol OK */
+    .action-gap {
+        margin-bottom: 30px;
     }
 
-    /* Mengecilkan teks tombol ganti warna agar muat di kolom */
     .stButton > button {
-        font-size: 10px !important;
-        padding: 0px 2px !important;
-        height: 30px !important;
-        border-radius: 5px !important;
+        font-size: 11px !important;
+        border-radius: 6px !important;
+        height: 35px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -83,27 +81,37 @@ def ganti_warna(i):
 
 def hitung_feedback(guess, target):
     t_temp, g_temp = list(target), list(guess)
-    b, s = 0, 0
+    posisi_benar, warna_benar_salah_posisi = 0, 0
+    
+    # 1. Cek Warna Benar & Posisi Benar
     for i in range(len(t_temp)):
         if g_temp[i] == t_temp[i]:
-            b += 1
+            posisi_benar += 1
             t_temp[i], g_temp[i] = "DONE_T", "DONE_G"
+            
+    # 2. Cek Warna Benar tapi Salah Posisi
     for i in range(len(g_temp)):
         if g_temp[i] != "DONE_G" and g_temp[i] in t_temp:
-            s += 1
+            warna_benar_salah_posisi += 1
             t_temp[t_temp.index(g_temp[i])] = "DONE_T"
-    return f"{b} Benar, {s} Salah Posisi"
+            
+    warna_salah = len(target) - (posisi_benar + warna_benar_salah_posisi)
+    
+    return f"{posisi_benar} warna benar & posisi benar, {warna_benar_salah_posisi} warna benar tapi salah posisi, {warna_salah} warna salah"
 
-# --- 4. TAMPILAN UTAMA ---
+# --- 4. TAMPILAN ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
     st.markdown("""
     <div class="desc-text">
         <strong>🎯 CARA BERMAIN:</strong><br>
-        1. Pilih level untuk mulai.<br>
-        2. Gunakan tombol 'Ganti' di bawah kotak.<br>
-        3. Tekan OK untuk cek tebakanmu.
+        1. Pilih tingkat kesulitan di bawah.<br>
+        2. Gunakan tombol 'Ganti' untuk mengubah warna kartu.<br>
+        3. Tebak urutan warna rahasia yang dipilih komputer.<br>
+        4. Tekan tombol OK untuk melihat hasil feedback.<br>
+        5. Warna & Posisi Benar = Tepat sasaran.<br>
+        6. Warna Benar Salah Posisi = Ada warnanya tapi salah letak.
     </div>
     """, unsafe_allow_html=True)
 
@@ -120,33 +128,33 @@ else:
     st.write(f"**Pilihan Warna:**")
     h_cols = st.columns(len(st.session_state.pool))
     for idx, h in enumerate(st.session_state.pool):
-        h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:8px; border:1px solid white;'></div>", unsafe_allow_html=True)
+        h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:10px; border:1px solid white;'></div>", unsafe_allow_html=True)
 
     st.write("---")
 
-    # BARIS KARTU WARNA
+    # BARIS KARTU
     cols_cards = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols_cards[i]:
             current_color = WARNA_HEX[st.session_state.guesses[i]]
             st.markdown(f'<div class="card-slot" style="background-color:{current_color};"></div>', unsafe_allow_html=True)
 
-    # BARIS TOMBOL GANTI (Tepat di bawah kartu)
+    # BARIS TOMBOL GANTI (Horizontal di bawah kartu)
     cols_btns = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols_btns[i]:
             st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
-    # MEMBERI JARAK ANTARA AREA BERMAIN DENGAN TOMBOL OK/RIWAYAT
-    st.markdown('<div class="spacing-box"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="action-gap"></div>', unsafe_allow_html=True)
 
+    # TOMBOL OK
     if st.button("CEK JAWABAN (OK) ✅", key="ok_main", use_container_width=True):
         if "Kosong" not in st.session_state.guesses:
             teks = hitung_feedback(st.session_state.guesses, st.session_state.target)
             st.session_state.history.append({'g': list(st.session_state.guesses), 'f': teks})
             if st.session_state.guesses == st.session_state.target:
                 st.balloons()
-                st.success("🎉 JACKPOT! MENANG!")
+                st.success("🎉 JACKPOT! KAMU MENANG!")
 
     if st.session_state.history:
         st.write("---")
