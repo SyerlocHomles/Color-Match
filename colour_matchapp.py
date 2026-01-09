@@ -21,14 +21,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Container Kartu & Info */
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
     /* Kotak Tebakan (Tombol Transparan di Atas Warna) */
     .stButton > button {
         border: 2px solid #555 !important;
@@ -38,7 +30,7 @@ st.markdown("""
         transition: 0.1s;
     }
     
-    /* Tombol OK Hitam */
+    /* Tombol OK Hitam/Putih */
     .ok-button > div > button {
         background-color: white !important;
         color: black !important;
@@ -50,28 +42,30 @@ st.markdown("""
 
     /* Style untuk Paku Bulat */
     .paku {
-        width: 12px;
-        height: 12px;
+        width: 15px;
+        height: 15px;
         border-radius: 50%;
         display: inline-block;
-        margin-right: 4px;
+        margin-right: 10px; /* Jarak antar paku agar sejajar kartu */
         border: 1px solid #333;
     }
 
     /* Riwayat Horizontal */
     .history-row {
         display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 10px;
-        padding: 5px;
+        flex-direction: column; /* Ubah ke kolom agar paku di atas kartu */
+        align-items: flex-start;
+        gap: 5px;
+        margin-bottom: 15px;
+        padding: 10px;
         border-bottom: 1px solid #333;
     }
     
     .history-card {
-        width: 20px;
-        height: 30px;
+        width: 25px;
+        height: 35px;
         border: 1px solid white;
+        margin-right: 2px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -80,7 +74,7 @@ st.markdown("""
 WARNA_LIST = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 WARNA_HEX = {
     "Kosong": "#333333", "Merah": "#FF0000", "Oren": "#FFA500", 
-    "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF", "Abu-abu": "#808080"
+    "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF"
 }
 
 if 'target' not in st.session_state:
@@ -97,76 +91,75 @@ def ganti_warna(i):
         idx = (WARNA_LIST.index(current) + 1) % len(WARNA_LIST)
         st.session_state.guesses[i] = WARNA_LIST[idx]
 
+# --- PERBAIKAN LOGIKA PAKU (SINKRON KIRI-KANAN) ---
 def hitung_paku(guess, target):
-    paku = []
+    # Inisialisasi semua paku sebagai Merah (Salah Total)
+    paku_result = ["Merah"] * len(target)
     t_temp = list(target)
     g_temp = list(guess)
     
-    # 1. Hijau (Benar Posisi & Warna)
-    idx_done = []
+    # Tahap 1: Cek yang Benar Posisi & Warna (Hijau)
     for i in range(len(g_temp)):
         if g_temp[i] == t_temp[i]:
-            paku.append("Hijau")
-            t_temp[i] = None
+            paku_result[i] = "Hijau"
+            t_temp[i] = None # Tandai agar tidak dihitung dua kali
             g_temp[i] = "DONE"
-            idx_done.append(i)
             
-    # 2. Oren & Abu-abu
+    # Tahap 2: Cek yang Warnanya Benar tapi Salah Posisi (Oren)
     for i in range(len(g_temp)):
         if g_temp[i] != "DONE":
             if g_temp[i] in t_temp:
-                paku.append("Oren")
+                paku_result[i] = "Oren"
+                # Hapus warna yang sudah 'terpakai' dari target sementara
                 t_temp[t_temp.index(g_temp[i])] = None
             else:
-                paku.append("Merah")
-    
-    # Sisa paku abu-abu jika warna benar tapi posisi sudah terpakai semua (Mastermind Logic)
-    # Untuk menyederhanakan sesuai permintaanmu, merah jika salah total.
-    return sorted(paku, reverse=True) # Hijau dulu, lalu Oren, lalu Merah
+                paku_result[i] = "Merah"
+                
+    return paku_result # Mengembalikan urutan asli tanpa sorted()
 
-# --- TAMPILAN SESUAI INSTRUKSI ---
+# --- TAMPILAN ---
 
-# 1. Judul Tengah Atas
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
-# 3 & 4. Info Kartu & Hint Warna
 col_info, col_hints = st.columns([1, 2])
 with col_info:
     st.subheader(f"{st.session_state.max_k} KARTU")
 with col_hints:
+    # Menampilkan petunjuk warna yang ada di dalam jawaban
     hints = sorted(list(set(st.session_state.target)))
-    h_cols = st.columns(len(hints))
+    h_cols = st.columns(5)
     for idx, h in enumerate(hints):
         h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:25px; border:1px solid white;'></div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# 5. 5 Kotak Tebakan (Klik langsung pada kotak)
+# Kotak Tebakan Utama
 cols_g = st.columns(5)
 for i in range(5):
     with cols_g[i]:
         if i < st.session_state.max_k:
-            # Tombol yang berubah warna saat diklik (Kecepatan diperbaiki)
             color = WARNA_HEX[st.session_state.guesses[i]]
-            st.button(" ", key=f"k_{i}", on_click=ganti_warna, args=(i,), 
-                      help="Klik untuk ganti warna", use_container_width=True)
-            # Menampilkan warna di bawah tombol karena CSS Streamlit membatasi warna tombol secara native
-            st.markdown(f"<div style='background-color:{color}; height:10px; border-radius:5px;'></div>", unsafe_allow_html=True)
-        else:
-            st.write("")
+            st.button(" ", key=f"k_{i}", on_click=ganti_warna, args=(i,), use_container_width=True)
+            st.markdown(f"<div style='background-color:{color}; height:12px; border-radius:5px;'></div>", unsafe_allow_html=True)
 
-# 6. Tombol OK Hitam
+# Tombol Eksekusi
 st.write("")
-col_ok_space, col_ok_btn = st.columns([4, 1])
+_, col_ok_btn = st.columns([4, 1])
 with col_ok_btn:
     st.markdown('<div class="ok-button">', unsafe_allow_html=True)
     if st.button("OK"):
         if "Kosong" not in st.session_state.guesses[:st.session_state.max_k]:
             res = hitung_paku(st.session_state.guesses[:st.session_state.max_k], st.session_state.target)
-            st.session_state.history.append({'g': list(st.session_state.guesses[:st.session_state.max_k]), 'p': res})
+            # Simpan tebakan dan hasil paku ke riwayat
+            st.session_state.history.append({
+                'g': list(st.session_state.guesses[:st.session_state.max_k]), 
+                'p': res
+            })
             
+            # Cek Kemenangan
             if st.session_state.guesses[:st.session_state.max_k] == st.session_state.target:
                 st.balloons()
+                st.success("KEREN! Kamu Menang!")
                 if st.session_state.max_k < 5: st.session_state.max_k += 1
                 st.session_state.target = random.choices(WARNA_LIST, k=st.session_state.max_k)
                 st.session_state.guesses = ["Kosong"] * st.session_state.max_k
@@ -174,19 +167,19 @@ with col_ok_btn:
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 6 (Perbaikan). Riwayat Horizontal
-st.write("### Riwayat:")
+# --- RIWAYAT DENGAN PERBAIKAN VISUAL ---
+st.write("### Riwayat (Urutan Kiri ke Kanan):")
 for h in reversed(st.session_state.history):
     st.markdown('<div class="history-row">', unsafe_allow_html=True)
     
-    # Paku
-    paku_html = "<div>"
+    # Baris Paku (Petunjuk) - Letakkan di atas kartu agar mudah dilihat
+    paku_html = '<div style="display: flex; margin-left: 5px;">'
     for p in h['p']:
         paku_html += f'<div class="paku" style="background-color:{WARNA_HEX[p]};"></div>'
     paku_html += "</div>"
     st.markdown(paku_html, unsafe_allow_html=True)
     
-    # Kartu (Horizontal)
+    # Baris Kartu (Tebakan)
     card_html = '<div style="display: flex; gap: 5px;">'
     for c in h['g']:
         card_html += f'<div class="history-card" style="background-color:{WARNA_HEX[c]};"></div>'
