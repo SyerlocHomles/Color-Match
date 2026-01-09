@@ -1,10 +1,10 @@
 import streamlit as st
 import random
 
-# --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Colour Match Pro", layout="centered")
+# --- 1. KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- CSS CUSTOM (VERSI STABIL) ---
+# --- 2. CSS CUSTOM (STABIL & PRESISI) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -16,7 +16,6 @@ st.markdown("""
         font-size: 32px;
         font-weight: bold;
         color: white;
-        margin-bottom: 5px;
     }
 
     .level-text {
@@ -27,42 +26,21 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Tombol Tebakan */
-    .stButton > button {
-        border: 2px solid #555 !important;
-        border-radius: 10px !important;
-        height: 80px !important;
-        width: 100% !important;
-    }
-    
-    /* Tombol OK */
-    .ok-button-container {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 20px;
-    }
-
-    /* CSS untuk Riwayat agar Bulatan di Tengah Atas Kartu */
-    .history-container {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        margin-top: 20px;
-    }
-
+    /* Area Riwayat agar Bulatan di Tengah Atas Kartu */
     .history-row {
         display: flex;
         flex-direction: row;
-        gap: 12px;
-        padding: 10px;
+        gap: 15px;
+        padding: 10px 0;
         border-bottom: 1px solid #333;
+        justify-content: flex-start;
     }
 
     .column-pair {
         display: flex;
         flex-direction: column;
-        align-items: center; /* Paku jadi tengah atas */
-        width: 35px;
+        align-items: center; /* KUNCI: Paku jadi tengah atas kartu */
+        width: 40px;
     }
 
     .paku-circle {
@@ -74,15 +52,15 @@ st.markdown("""
     }
 
     .card-rect {
-        width: 30px;
-        height: 40px;
+        width: 32px;
+        height: 45px;
         border: 1px solid white;
         border-radius: 4px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIKA GAME & LEVEL ---
+# --- 3. LOGIKA GAME & LEVELING ---
 WARNA_LIST = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 WARNA_HEX = {
     "Kosong": "#333333", "Merah": "#FF0000", "Oren": "#FFA500", 
@@ -92,18 +70,14 @@ WARNA_HEX = {
 if 'level' not in st.session_state:
     st.session_state.level = 1
     st.session_state.max_k = 3
-    st.session_state.target = random.choices(WARNA_LIST, k=st.session_state.max_k)
-    st.session_state.guesses = ["Kosong"] * st.session_state.max_k
+    st.session_state.target = random.choices(WARNA_LIST, k=3)
+    st.session_state.guesses = ["Kosong"] * 3
     st.session_state.history = []
 
-def update_game_difficulty():
-    """Update jumlah kartu berdasarkan level tebakan user"""
-    if st.session_state.level <= 5:
-        st.session_state.max_k = 3
-    elif 6 <= st.session_state.level <= 10:
-        st.session_state.max_k = 4
-    else:
-        st.session_state.max_k = 5
+def tentukan_jumlah_kartu(lvl):
+    if lvl <= 5: return 3
+    if 6 <= lvl <= 10: return 4
+    return 5
 
 def ganti_warna(i):
     current = st.session_state.guesses[i]
@@ -114,88 +88,77 @@ def ganti_warna(i):
         st.session_state.guesses[i] = WARNA_LIST[idx]
 
 def hitung_paku(guess, target):
-    paku_result = ["Merah"] * len(target)
+    paku_res = ["Merah"] * len(target)
     t_temp = list(target)
     g_temp = list(guess)
     
-    # 1. Hijau (Posisi & Warna Benar)
+    # Hijau: Pas warna & posisi
     for i in range(len(g_temp)):
         if g_temp[i] == t_temp[i]:
-            paku_result[i] = "Hijau"
+            paku_res[i] = "Hijau"
             t_temp[i] = None
             g_temp[i] = "DONE"
-            
-    # 2. Oren (Warna Benar, Posisi Salah)
+    # Oren: Warna ada tapi posisi salah
     for i in range(len(g_temp)):
         if g_temp[i] != "DONE":
             if g_temp[i] in t_temp:
-                paku_result[i] = "Oren"
+                paku_res[i] = "Oren"
                 t_temp[t_temp.index(g_temp[i])] = None
-                
-    return paku_result
+    return paku_res
 
-# --- TAMPILAN ---
+# --- 4. TAMPILAN ANTARMUKA ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="level-text">LEVEL {st.session_state.level} ({st.session_state.max_k} KARTU)</div>', unsafe_allow_html=True)
 
-# Hint Warna yang Ada (Target)
+# Hint warna target
 hints = sorted(list(set(st.session_state.target)))
-h_cols = st.columns(len(hints) if len(hints) > 0 else 1)
+h_cols = st.columns(len(hints))
 for idx, h in enumerate(hints):
-    h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:20px; border:1px solid white; border-radius:3px;'></div>", unsafe_allow_html=True)
+    h_cols[idx].markdown(f"<div style='background-color:{WARNA_HEX[h]}; height:20px; border:1px solid white;'></div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# Area Klik Kartu
+# Area tombol kartu
 cols_g = st.columns(st.session_state.max_k)
 for i in range(st.session_state.max_k):
     with cols_g[i]:
-        color_code = WARNA_HEX[st.session_state.guesses[i]]
+        c_code = WARNA_HEX[st.session_state.guesses[i]]
         st.button(" ", key=f"btn_{i}", on_click=ganti_warna, args=(i,), use_container_width=True)
-        st.markdown(f"<div style='background-color:{color_code}; height:12px; border-radius:5px;'></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:{c_code}; height:12px; border-radius:5px;'></div>", unsafe_allow_html=True)
 
-# Tombol OK
 st.write("")
-col_space, col_btn = st.columns([4, 1])
-with col_btn:
+_, col_ok = st.columns([4, 1])
+with col_ok:
     if st.button("OK", use_container_width=True):
-        if "Kosong" not in st.session_state.guesses[:st.session_state.max_k]:
-            res = hitung_paku(st.session_state.guesses[:st.session_state.max_k], st.session_state.target)
-            st.session_state.history.append({
-                'g': list(st.session_state.guesses[:st.session_state.max_k]), 
-                'p': res
-            })
+        if "Kosong" not in st.session_state.guesses:
+            res_paku = hitung_paku(st.session_state.guesses, st.session_state.target)
+            st.session_state.history.append({'g': list(st.session_state.guesses), 'p': res_paku})
             
-            # Cek Kemenangan
-            if st.session_state.guesses[:st.session_state.max_k] == st.session_state.target:
+            # Cek Menang
+            if st.session_state.guesses == st.session_state.target:
                 st.balloons()
                 st.session_state.level += 1
-                update_game_difficulty()
+                st.session_state.max_k = tentukan_jumlah_kartu(st.session_state.level)
                 st.session_state.target = random.choices(WARNA_LIST, k=st.session_state.max_k)
                 st.session_state.guesses = ["Kosong"] * st.session_state.max_k
-                st.session_state.history = [] # Reset riwayat tiap naik level
+                st.session_state.history = []
                 st.rerun()
 
-# --- BAGIAN RIWAYAT (FIX VISUAL) ---
+# --- 5. RIWAYAT (SOLUSI ANTI-BOCOR & CENTER) ---
 st.write("### Riwayat:")
-
-# Bungkus seluruh riwayat dalam satu blok HTML agar tidak pecah jadi teks
-history_html = '<div class="history-container">'
-
 for h in reversed(st.session_state.history):
-    history_html += '<div class="history-row">'
-    
-    for i in range(len(h['g'])):
-        p_color = WARNA_HEX[h['p'][i]]
-        c_color = WARNA_HEX[h['g'][i]]
-        
-        history_html += f'''
-            <div class="column-pair">
-                <div class="paku-circle" style="background-color: {p_color};"></div>
-                <div class="card-rect" style="background-color: {c_color};"></div>
-            </div>
-        '''
-    history_html += '</div>'
-
-history_html += '</div>'
-st.markdown(history_html, unsafe_allow_html=True)
+    # Menggunakan container tunggal untuk satu baris riwayat
+    with st.container():
+        # Membangun HTML untuk baris tersebut
+        html_string = '<div class="history-row">'
+        for i in range(len(h['g'])):
+            p_color = WARNA_HEX[h['p'][i]]
+            c_color = WARNA_HEX[h['g'][i]]
+            html_string += f'''
+                <div class="column-pair">
+                    <div class="paku-circle" style="background-color: {p_color};"></div>
+                    <div class="card-rect" style="background-color: {c_color};"></div>
+                </div>
+            '''
+        html_string += '</div>'
+        st.markdown(html_string, unsafe_allow_html=True)
