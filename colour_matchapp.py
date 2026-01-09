@@ -1,132 +1,119 @@
 import streamlit as st
 import random
 
-# --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Guess The Colour - Master", layout="centered")
-
-# --- STYLE CSS UNTUK TAMPILAN HP ---
+# --- STYLE CSS AGAR MIRIP SKETSA ---
 st.markdown("""
     <style>
-    .color-box {
-        width: 50px; height: 70px; border-radius: 10px; border: 2px solid #333;
-        display: inline-block; margin: 5px; cursor: pointer; text-align: center; line-height: 70px;
+    .stApp { background-color: #FFFFFF; }
+    .card-slot {
+        border: 2px solid #000;
+        border-radius: 15px;
+        height: 120px;
+        width: 80px;
+        margin: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f9f9f9;
     }
-    .paku {
-        width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px;
+    .paku-container {
+        display: flex;
+        gap: 5px;
+        align-items: center;
     }
-    .stButton>button { width: 100%; border-radius: 20px; font-weight: bold; }
+    .paku-dot {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 1px solid #000;
+    }
+    /* Tombol transparan di atas kotak kartu */
+    .stButton>button {
+        height: 120px;
+        background-color: transparent !important;
+        border: none !important;
+        color: transparent !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- INITIAL STATE ---
-WARNA_DAFTAR = {
-    "Putih": "#FFFFFF", "Merah": "#FF4B4B", "Oren": "#FFA500", 
+# --- LOGIKA GAME ---
+WARNA_MAP = {
+    "Putih": "#FFFFFF", "Merah": "#FF0000", "Oren": "#FFA500", 
     "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF"
 }
-LIST_WARNA = list(WARNA_DAFTAR.keys())[1:] # Kecuali Putih
+LIST_WARNA = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 
-if 'level' not in st.session_state:
-    st.session_state.level = 1
-    st.session_state.max_kartu = 3 # Mulai dari 3 kartu
-    st.session_state.jawaban_rahasia = random.choices(LIST_WARNA, k=st.session_state.max_kartu)
-    st.session_state.tebakan_saat_ini = ["Putih"] * st.session_state.max_kartu
-    st.session_state.riwayat = []
-    st.session_state.game_over = False
+if 'game' not in st.session_state:
+    st.session_state.game = {
+        'target': random.choices(LIST_WARNA, k=5),
+        'attempts': [],
+        'current_guess': ["Putih"] * 5,
+        'over': False
+    }
 
-def reset_game(next_level=False):
-    if next_level:
-        st.session_state.level += 1
-        st.session_state.max_kartu = min(5, st.session_state.max_kartu + 1)
-    else:
-        st.session_state.level = 1
-        st.session_state.max_kartu = 3
-    
-    st.session_state.jawaban_rahasia = random.choices(LIST_WARNA, k=st.session_state.max_kartu)
-    st.session_state.tebakan_saat_ini = ["Putih"] * st.session_state.max_kartu
-    st.session_state.riwayat = []
-    st.session_state.game_over = False
+def handle_click(i):
+    if not st.session_state.game['over']:
+        curr = st.session_state.game['current_guess'][i]
+        next_idx = (LIST_WARNA.index(curr) + 1) % len(LIST_WARNA) if curr in LIST_WARNA else 0
+        st.session_state.game['current_guess'][i] = LIST_WARNA[next_idx]
 
-# --- LOGIKA PENGECEKAN (PAKU) ---
-def cek_jawaban(tebakan, rahasia):
-    hasil_paku = []
-    temp_rahasia = rahasia[:]
-    temp_tebakan = tebakan[:]
-    
-    # 1. Cek Hijau (Benar posisi & warna)
-    for i in range(len(temp_tebakan)):
-        if temp_tebakan[i] == temp_rahasia[i]:
-            hasil_paku.append("🟢") # Hijau
-            temp_rahasia[i] = None
-            temp_tebakan[i] = "DONE"
-            
-    # 2. Cek Oranye & Abu-abu
-    for i in range(len(temp_tebakan)):
-        if temp_tebakan[i] != "DONE":
-            if temp_tebakan[i] in temp_rahasia:
-                hasil_paku.append("🟠") # Oranye
-                temp_rahasia[temp_rahasia.index(temp_tebakan[i])] = None
-            else:
-                hasil_paku.append("🔴") # Merah (Salah Total)
-                
-    random.shuffle(hasil_paku) # Paku diacak agar tidak memberitahu posisi mana yang benar
-    return "".join(hasil_paku)
+# --- TAMPILAN ATAS (INFO) ---
+col_score, col_hints = st.columns([1, 2])
+with col_score:
+    st.markdown(f"### {10 - len(st.session_state.game['attempts'])}") # Angka 50 di sketsamu (Sisa Nyawa)
+with col_hints:
+    hints = sorted(list(set(st.session_state.game['target'])))
+    h_cols = st.columns(len(hints))
+    for idx, h in enumerate(hints):
+        h_cols[idx].markdown(f"<div style='background-color:{WARNA_MAP[h]}; height:30px; border:2px solid #000;'></div>", unsafe_allow_html=True)
 
-# --- UI TAMPILAN ---
-st.title("🎨 Guess The Colour")
-st.subheader(f"Level {st.session_state.level} - Tebak {st.session_state.max_kartu} Kartu")
+st.write("")
 
-# Header Informasi (Sesuai sketsa: Poin & Warna yang tersedia)
-c1, c2 = st.columns([1, 2])
-with c1:
-    st.metric("Sisa Nyawa", 10 - len(st.session_state.riwayat))
-with c2:
-    warna_unik = sorted(list(set(st.session_state.jawaban_rahasia)))
-    st.write("Warna di dalam kartu:")
-    cols = st.columns(len(warna_unik))
-    for i, w in enumerate(warna_unik):
-        cols[i].markdown(f"<div style='background-color:{WARNA_DAFTAR[w]}; height:20px; border:1px solid grey;'></div>", unsafe_allow_html=True)
+# --- TAMPILAN TENGAH (5 KARTU) ---
+cols = st.columns(5)
+for i in range(5):
+    with cols[i]:
+        # Kotak warna
+        color = WARNA_MAP[st.session_state.game['current_guess'][i]]
+        st.markdown(f"<div class='card-slot' style='background-color:{color};'></div>", unsafe_allow_html=True)
+        # Tombol transparan untuk klik
+        st.button(" ", key=f"btn_{i}", on_click=handle_click, args=(i,))
+
+# --- TOMBOL OK ---
+col_space, col_ok = st.columns([4, 1])
+with col_ok:
+    if st.button("OK", key="ok_btn"):
+        # Logika Pengecekan Paku
+        guess = st.session_state.game['current_guess']
+        target = st.session_state.game['target']
+        
+        # Simulasi hasil paku sederhana
+        paku_result = []
+        for g, t in zip(guess, target):
+            if g == t: paku_result.append("#00FF00") # Hijau (Benar semua)
+            elif g in target: paku_result.append("#FFA500") # Oren (Benar warna)
+            else: paku_result.append("#FF0000") # Merah (Salah)
+        
+        st.session_state.game['attempts'].append({'guess': list(guess), 'paku': paku_result})
+        if guess == target:
+            st.success("Level Up!")
+            st.session_state.game['over'] = True
 
 st.write("---")
 
-# Area Kartu Tebakan (Bisa diklik)
-cols_kartu = st.columns(st.session_state.max_kartu)
-for i in range(st.session_state.max_kartu):
-    with cols_kartu[i]:
-        if st.button(f"K{i+1}", key=f"btn_{i}"):
-            if not st.session_state.game_over:
-                idx_sekarang = LIST_WARNA.index(st.session_state.tebakan_saat_ini[i]) if st.session_state.tebakan_saat_ini[i] in LIST_WARNA else -1
-                st.session_state.tebakan_saat_ini[i] = LIST_WARNA[(idx_sekarang + 1) % len(LIST_WARNA)]
-        
-        warna_hex = WARNA_DAFTAR[st.session_state.tebakan_saat_ini[i]]
-        st.markdown(f"<div class='color-box' style='background-color:{warna_hex};'></div>", unsafe_allow_html=True)
-
-# Tombol OK
-if st.button("✅ SETOR JAWABAN (OK)"):
-    if "Putih" in st.session_state.tebakan_saat_ini:
-        st.warning("Pilih semua warna dulu!")
-    else:
-        hasil = cek_jawaban(st.session_state.tebakan_saat_ini, st.session_state.jawaban_rahasia)
-        st.session_state.riwayat.append({"tebakan": list(st.session_state.tebakan_saat_ini), "paku": hasil})
-        
-        if st.session_state.tebakan_saat_ini == st.session_state.jawaban_rahasia:
-            st.success("LUAR BIASA! Kamu Benar!")
-            st.balloons()
-            st.button("Lanjut ke Level Berikutnya", on_click=reset_game, args=(True,))
-            st.session_state.game_over = True
-        elif len(st.session_state.riwayat) >= 10:
-            st.error(f"GAME OVER! Jawabannya adalah: {', '.join(st.session_state.jawaban_rahasia)}")
-            st.button("Coba Lagi", on_click=reset_game)
-            st.session_state.game_over = True
-
-# Riwayat Tebakan (Paku di sebelah kiri sesuai sketsa)
-st.write("### Riwayat Tebakan")
-for r in reversed(st.session_state.riwayat):
-    col_p, col_t = st.columns([1, 2])
-    with col_p:
-        st.write(f"Paku: {r['paku']}")
-    with col_t:
-        warna_html = "".join([f"<div class='paku' style='background-color:{WARNA_DAFTAR[w]};'></div>" for w in r['tebakan']])
-        st.markdown(warna_html, unsafe_allow_html=True)
-
-if st.sidebar.button("Reset Total"):
-    reset_game()
+# --- RIWAYAT (PAKU DI KIRI) ---
+for att in reversed(st.session_state.game['attempts']):
+    c_paku, c_cards = st.columns([1, 3])
+    with c_paku:
+        paku_html = "<div class='paku-container'>"
+        for p_color in att['paku']:
+            paku_html += f"<div class='paku-dot' style='background-color:{p_color};'></div>"
+        paku_html += "</div>"
+        st.markdown(paku_html, unsafe_allow_html=True)
+    with c_cards:
+        card_html = "<div style='display:flex; gap:5px;'>"
+        for c_color in att['guess']:
+            card_html += f"<div style='width:20px; height:30px; background-color:{WARNA_MAP[c_color]}; border:1px solid #000;'></div>"
+        card_html += "</div>"
+        st.markdown(card_html, unsafe_allow_html=True)
