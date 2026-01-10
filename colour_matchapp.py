@@ -4,7 +4,7 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (OPTIMASI LAYAR HP & TATA LETAK) ---
+# --- 2. CSS CUSTOM (OPTIMASI TOMBOL & UKURAN) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
@@ -12,7 +12,7 @@ st.markdown("""
     
     .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 
-    /* GRID UNTUK KOTAK JAWABAN (1 BARIS PENUH) */
+    /* GRID UNTUK KOTAK JAWABAN */
     [data-testid="stHorizontalBlock"] {
         display: grid !important;
         grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
@@ -20,7 +20,7 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* KOTAK WARNA LANGSING (PORTRAIT) */
+    /* KOTAK WARNA LANGSING */
     .card-slot {
         aspect-ratio: 2 / 3.5;
         width: 100%;
@@ -30,15 +30,18 @@ st.markdown("""
         box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
     }
 
-    /* TOMBOL GANTI WARNA DI BAWAH KOTAK */
+    /* TOMBOL GANTI: UKURAN PAS KOTAK & TEKS SATU BARIS */
     .stButton > button {
         width: 100% !important;
-        font-size: 10px !important;
-        height: 35px !important;
-        padding: 0px !important;
+        font-size: 9px !important; /* Perkecil teks agar tidak enter */
+        height: 32px !important;
+        padding: 0px 2px !important;
+        white-space: nowrap !important; /* Paksa satu baris */
+        overflow: hidden !important;
+        text-overflow: clip !important;
     }
 
-    /* TOMBOL CEK JAWABAN (MEMANJANG DI BAWAH) */
+    /* TOMBOL CEK JAWABAN & MAIN LAGI */
     .cek-area .stButton > button {
         width: 100% !important;
         height: 55px !important;
@@ -64,7 +67,7 @@ st.markdown("""
     .pool-container {
         display: flex; justify-content: center; gap: 8px; margin-bottom: 20px;
     }
-    .pool-box { width: 22px; height: 22px; border-radius: 4px; border: 1px solid #fff; }
+    .pool-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #fff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -76,7 +79,6 @@ if 'game_active' not in st.session_state:
     st.session_state.game_active = False
 
 def start_game(mode):
-    # Penyesuaian Jumlah Kotak & Kesempatan Baru
     if mode == "Mudah":
         k, ch = 3, 5
     elif mode == "Sedang":
@@ -104,12 +106,10 @@ def ganti_warna(i):
 def hitung_feedback(guess, target):
     t_temp, g_temp = list(target), list(guess)
     b_pos, b_warna = 0, 0
-    # Cek Warna & Posisi Benar
     for i in range(len(t_temp)):
         if g_temp[i] == t_temp[i]:
             b_pos += 1
             t_temp[i], g_temp[i] = "DONE", "USED"
-    # Cek Warna Benar tapi Salah Posisi
     for i in range(len(g_temp)):
         if g_temp[i] != "USED" and g_temp[i] in t_temp:
             b_warna += 1
@@ -120,29 +120,24 @@ def hitung_feedback(guess, target):
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    st.markdown('<div style="color:white; text-align:center; margin-bottom:15px;">PILIH LEVEL:</div>', unsafe_allow_html=True)
-    if st.button("🟢 MUDAH (5 Kesempatan)", use_container_width=True): start_game("Mudah"); st.rerun()
-    if st.button("🟡 SEDANG (8 Kesempatan)", use_container_width=True): start_game("Sedang"); st.rerun()
-    if st.button("🔴 SULIT (10 Kesempatan)", use_container_width=True): start_game("Sulit"); st.rerun()
+    if st.button("🟢 MUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
+    if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
+    if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
-    # Header Game
     st.markdown(f'<div class="chance-text">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
     
-    # Warna yang Mungkin (Asumsi)
     pool_html = '<div class="pool-container">'
     for p_color in st.session_state.pool:
         pool_html += f'<div class="pool-box" style="background-color:{WARNA_HEX[p_color]};"></div>'
     pool_html += '</div>'
     st.markdown(pool_html, unsafe_allow_html=True)
 
-    # Area Kotak Tebakan
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
             st.markdown(f'<div class="card-slot" style="background-color:{WARNA_HEX[st.session_state.guesses[i]]};"></div>', unsafe_allow_html=True)
             st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
-    # Tombol Cek Jawaban
     st.markdown('<div class="cek-area">', unsafe_allow_html=True)
     if not st.session_state.game_over:
         if st.button("Cek Jawaban", use_container_width=True):
@@ -153,23 +148,21 @@ else:
                 
                 if st.session_state.guesses == st.session_state.target:
                     st.balloons()
-                    st.success("🎉 LUAR BIASA! KAMU MENANG!")
                     st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
-                    st.error(f"❌ KESEMPATAN HABIS! Jawabannya: {', '.join(st.session_state.target)}")
                     st.session_state.game_over = True
                 st.rerun()
     else:
-        if st.button("MAIN LAGI 🔄", use_container_width=True):
+        # Tombol Main Lagi tanpa ikon
+        if st.button("Main Lagi", use_container_width=True):
             st.session_state.game_active = False
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Riwayat & Pernyataan
     if st.session_state.history:
         st.write("---")
         st.write("### 📜 RIWAYAT TEBAKAN:")
         for h in reversed(st.session_state.history):
-            st.info(h['f']) # Pernyataan feedback
+            st.info(h['f'])
             row_html = "".join([f'<div style="display:inline-block; width:18px; height:18px; background-color:{WARNA_HEX[c]}; margin-right:6px; border:1px solid white; border-radius:3px;"></div>' for c in h['g']])
             st.markdown(row_html, unsafe_allow_html=True)
