@@ -4,19 +4,25 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (FIX LAYOUT HORIZONTAL & TOMBOL) ---
+# --- 2. CSS CUSTOM (AUTO-RESIZE KOTAK AGAR MUAT DI HP) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
     
-    /* Memaksa kolom tetap berjajar ke samping di HP */
+    /* MEMAKSA SEMUA ELEMEN TETAP HORIZONTAL & MERATA */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: flex-start !important;
-        gap: 8px !important;
+        justify-content: center !important;
+        gap: 4px !important;
+    }
+
+    [data-testid="column"] {
+        flex: 1 !important; /* Membuat kolom mengecil secara otomatis */
+        min-width: 0px !important;
     }
 
     .title-text {
@@ -26,33 +32,41 @@ st.markdown("""
 
     .desc-text {
         font-family: 'Space Mono', monospace; color: white;
-        background-color: rgba(255, 255, 255, 0.1); padding: 15px;
-        border-radius: 12px; border: 1px solid #555;
-        margin-bottom: 20px; font-size: 12px;
+        background-color: rgba(255, 255, 255, 0.1); padding: 12px;
+        border-radius: 10px; border: 1px solid #555;
+        margin-bottom: 15px; font-size: 11px;
     }
 
-    /* Kotak Warna Kecil Horizontal */
+    /* Kotak Warna Responsif (Rasio 1:1) */
     .card-slot {
-        height: 50px; 
-        width: 100%; 
-        border-radius: 8px;
-        border: 2px solid #fff;
-        margin-bottom: 8px;
+        aspect-ratio: 1 / 1; /* Memastikan bentuk kotak sempurna */
+        width: 100%;
+        border-radius: 6px;
+        border: 1.5px solid #fff;
+        margin-bottom: 5px;
     }
 
-    /* Tombol Ganti Warna Kecil */
+    /* Indikator Warna Petunjuk di Atas */
+    .pool-slot {
+        height: 15px;
+        width: 100%;
+        border-radius: 3px;
+        border: 1px solid rgba(255,255,255,0.5);
+    }
+
+    /* Tombol Ganti Warna Mini */
     .stButton > button {
         width: 100% !important;
-        font-size: 10px !important;
-        padding: 2px !important;
-        height: 35px !important;
-        white-space: normal !important;
-        line-height: 1.2 !important;
+        font-size: 9px !important;
+        padding: 0px !important;
+        height: 28px !important;
+        line-height: 1 !important;
+        border-radius: 4px !important;
     }
 
     .chance-text {
         text-align: center; font-size: 18px; font-weight: bold;
-        color: #FF4B4B; margin-bottom: 15px; font-family: 'Space Mono', monospace;
+        color: #FF4B4B; margin-bottom: 10px; font-family: 'Space Mono', monospace;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -67,9 +81,9 @@ if 'game_active' not in st.session_state:
 
 def start_game(mode):
     k = 3 if mode == "Mudah" else 4 if mode == "Sedang" else 5
-    # Ambil 3-5 warna acak sebagai pilihan (pool)
+    # Ambil warna unik untuk petunjuk (Pool)
     pool = random.sample(WARNA_LIST, k)
-    # Tentukan jawaban rahasia dari pool tersebut
+    # Target diambil dari pool (bisa duplikat)
     st.session_state.target = [random.choice(pool) for _ in range(k)]
     st.session_state.pool = pool
     st.session_state.max_k = k
@@ -107,11 +121,10 @@ if not st.session_state.game_active:
     st.markdown("""
     <div class="desc-text">
         <strong>🎯 CARA BERMAIN:</strong><br>
-        1. Pilih tingkat kesulitan.<br>
-        2. Klik tombol 'Ganti Warna' di bawah kotak.<br>
-        3. Kamu punya 5 kesempatan menebak.<br>
-        4. Tekan Cek Jawaban untuk melihat feedback.<br>
-        5. Cocokkan warna dengan petunjuk di atas.
+        1. Pilih level. Kotak akan menyesuaikan layar.<br>
+        2. Klik 'Ganti Warna' di bawah kotak tebakan.<br>
+        3. Gunakan 5 kesempatan untuk menang!<br>
+        4. Cek petunjuk warna di baris paling atas.
     </div>
     """, unsafe_allow_html=True)
     if st.button("🟢 MUDAH (3 KARTU)", use_container_width=True): start_game("Mudah"); st.rerun()
@@ -122,24 +135,24 @@ else:
         st.session_state.game_active = False
         st.rerun()
 
-    # Petunjuk Warna (Pool)
-    st.write(f"**Warna yang mungkin muncul ({st.session_state.max_k} kartu):**")
+    # 1. Baris Petunjuk Warna (Pool) - Selalu 1 baris
+    st.write(f"**Petunjuk Warna:**")
     p_cols = st.columns(len(st.session_state.pool))
     for idx, p_color in enumerate(st.session_state.pool):
-        p_cols[idx].markdown(f'<div style="background-color:{WARNA_HEX[p_color]}; height:10px; border-radius:3px; border:1px solid white;"></div>', unsafe_allow_html=True)
+        p_cols[idx].markdown(f'<div class="pool-slot" style="background-color:{WARNA_HEX[p_color]};"></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="chance-text">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
 
-    # Area Tebakan (Horizontal)
-    cols = st.columns(st.session_state.max_k)
+    # 2. Area Tebakan (Kotak + Tombol) - Selalu 1 baris
+    g_cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
-        with cols[i]:
+        with g_cols[i]:
             st.markdown(f'<div class="card-slot" style="background-color:{WARNA_HEX[st.session_state.guesses[i]]};"></div>', unsafe_allow_html=True)
-            st.button("Ganti Warna", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
+            st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
     st.write("")
     
-    # Tombol Cek Jawaban
+    # 3. Tombol Cek Jawaban
     if not st.session_state.game_over:
         if st.button("CEK JAWABAN ✅", use_container_width=True):
             if "Kosong" not in st.session_state.guesses:
@@ -150,15 +163,15 @@ else:
                 if st.session_state.guesses == st.session_state.target:
                     st.balloons(); st.success("🎉 JACKPOT! MENANG!"); st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
-                    st.error(f"❌ GAME OVER! Jawaban: {', '.join(st.session_state.target)}")
+                    st.error(f"❌ KESEMPATAN HABIS!")
                     st.session_state.game_over = True
                 st.rerun()
 
-    # Riwayat
+    # 4. Riwayat
     if st.session_state.history:
         st.write("---")
         st.write("### 📜 RIWAYAT:")
         for h in reversed(st.session_state.history):
             st.info(h['f'])
-            row = "".join([f'<div style="display:inline-block; width:20px; height:20px; background-color:{WARNA_HEX[c]}; margin-right:8px; border:1px solid white; border-radius:4px;"></div>' for c in h['g']])
+            row = "".join([f'<div style="display:inline-block; width:18px; height:18px; background-color:{WARNA_HEX[c]}; margin-right:6px; border:1px solid white; border-radius:3px;"></div>' for c in h['g']])
             st.markdown(row, unsafe_allow_html=True)
