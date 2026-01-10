@@ -4,25 +4,26 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (KUNCI UKURAN LANGSING & TOMBOL LEBAR) ---
+# --- 2. CSS CUSTOM (HARD FIX UNTUK JARAK SANGAT RAPAT) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
     
-    /* AREA CONTAINER KOTAK: SANGAT RAPAT */
+    /* MEMAKSA JARAK ANTAR KOLOM JADI MINIMAL */
     [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 4px !important; /* Jarak antar kotak sangat sempit */
+        gap: 2px !important; 
         justify-content: center !important;
+        flex-wrap: nowrap !important; /* Mencegah kotak turun ke bawah */
     }
 
-    /* KUNCI LEBAR KOLOM AGAR KOTAK LANGSING */
+    /* MENGHAPUS PADDING BAWAAN STREAMLIT PADA KOLOM */
     [data-testid="column"] {
-        width: 60px !important; /* Lebar sempit sesuai gambar */
-        flex: none !important;
+        padding: 0px !important;
+        margin: 0px -2px !important; /* Teknik negative margin untuk merapatkan */
+        min-width: 0px !important;
+        flex: 0 0 auto !important;
+        width: 60px !important;
     }
 
     .title-text {
@@ -30,29 +31,30 @@ st.markdown("""
         font-size: 24px; color: white; margin-bottom: 10px;
     }
 
-    /* KOTAK WARNA: LANGSING (Tinggi > Lebar) */
+    /* KOTAK WARNA: LANGSING SESUAI GAMBAR */
     .card-slot {
-        width: 55px !important;
-        height: 80px !important; /* Dibuat lebih tinggi agar langsing */
-        border-radius: 8px;
-        border: 2px solid #fff;
-        margin-bottom: 5px;
+        width: 58px !important;
+        height: 90px !important;
+        border-radius: 6px;
+        border: 1.5px solid #ffffff;
+        margin: 0 auto 5px auto;
     }
 
-    /* TOMBOL GANTI: KECIL PAS DIBAWAH KOTAK */
+    /* TOMBOL GANTI: PRESISI DI BAWAH KOTAK */
     .stButton > button {
-        width: 55px !important;
-        height: 28px !important;
-        font-size: 9px !important;
+        width: 58px !important;
+        height: 30px !important;
+        font-size: 10px !important;
         padding: 0px !important;
         border-radius: 4px !important;
+        margin: 0 auto !important;
     }
 
-    /* KOTAK KECIL WARNA RAHASIA (DI TENGAH) */
+    /* KOTAK KECIL WARNA RAHASIA (TENGAH) */
     .pool-container {
         display: flex;
         justify-content: center;
-        gap: 6px;
+        gap: 5px;
         margin-bottom: 15px;
     }
     .pool-box {
@@ -62,20 +64,21 @@ st.markdown("""
         border: 1px solid white;
     }
 
-    /* TOMBOL CEK JAWABAN: MEMANJANG KE SAMPING */
-    .cek-container .stButton > button {
-        width: 100% !important; /* Memanjang */
-        height: 45px !important;
-        font-size: 16px !important;
+    /* TOMBOL CEK JAWABAN: MEMANJANG HORIZONTAL */
+    .cek-wrapper .stButton > button {
+        width: 100% !important;
+        height: 50px !important;
+        font-size: 18px !important;
         font-weight: bold !important;
-        background-color: #1E1E1E !important;
-        border: 2px solid #FFD700 !important; /* Warna emas agar menonjol */
+        background-color: #262730 !important;
+        border: 2px solid #FFD700 !important;
         color: white !important;
         margin-top: 20px;
+        border-radius: 10px !important;
     }
 
     .chance-text {
-        text-align: center; font-size: 20px; font-weight: bold;
+        text-align: center; font-size: 22px; font-weight: bold;
         color: #FF4B4B; margin-bottom: 5px; font-family: 'Space Mono', monospace;
     }
 </style>
@@ -118,7 +121,7 @@ if not st.session_state.game_active:
 else:
     st.markdown(f'<div class="chance-text">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
     
-    # 1. ASUMSI WARNA (KOTAK KECIL DI TENGAH)
+    # 1. WARNA RAHASIA (KOTAK KECIL TENGAH)
     st.markdown('<div style="color:white; text-align:center; font-size:12px; margin-bottom:5px;">Warna Rahasia Terdiri Dari:</div>', unsafe_allow_html=True)
     pool_html = '<div class="pool-container">'
     for p_color in st.session_state.pool:
@@ -128,7 +131,7 @@ else:
 
     st.write("---")
 
-    # 2. AREA TEBAKAN (LANGSING & RAPAT)
+    # 2. AREA TEBAKAN (RAPAT & SEMPIT)
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
@@ -136,7 +139,7 @@ else:
             st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
     # 3. TOMBOL CEK JAWABAN (MEMANJANG)
-    st.markdown('<div class="cek-container">', unsafe_allow_html=True)
+    st.markdown('<div class="cek-wrapper">', unsafe_allow_html=True)
     if not st.session_state.game_over:
         if st.button("Cek Jawaban", use_container_width=True):
             if "Kosong" not in st.session_state.guesses:
