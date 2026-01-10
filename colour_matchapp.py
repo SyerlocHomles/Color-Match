@@ -4,26 +4,24 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (FIX JARAK 0.25CM & ICON POS) ---
+# --- 2. CSS CUSTOM (FIX MENU & JARAK RAPAT) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
     
-    /* JARAK ANTAR KOTAK 0.25CM (~10px) */
+    /* JARAK ANTAR KOTAK DIBUAT RAPAT (8px) AGAR TIDAK TERHALANG */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        gap: 10px !important; 
-        overflow-x: auto !important;
-        padding-bottom: 10px;
+        gap: 8px !important; 
         justify-content: center !important;
     }
 
     [data-testid="column"] {
-        flex-shrink: 0 !important;
-        width: 95px !important; 
+        flex: 1 !important;
+        min-width: 0px !important;
     }
 
     .title-text {
@@ -31,27 +29,21 @@ st.markdown("""
         font-size: 24px; color: white; margin-bottom: 20px;
     }
 
-    /* KOTAK WARNA: Lebar 2.5cm & Tinggi 3cm */
+    /* KOTAK WARNA: Tetap Proporsional */
     .card-slot {
-        width: 95px !important;
-        height: 115px !important;
+        aspect-ratio: 2.5 / 3; /* Lebar 2.5, Tinggi 3 */
+        width: 100%;
         border-radius: 8px;
         border: 2px solid #fff;
         margin-bottom: 8px;
     }
 
-    /* TOMBOL GANTI WARNA */
+    /* TOMBOL GANTI */
     .stButton > button {
-        width: 95px !important;
-        font-size: 11px !important;
-        height: 40px !important;
-        border-radius: 6px !important;
-    }
-
-    /* TOMBOL MENU (ICON DI ATAS) */
-    .menu-btn-container {
-        text-align: center;
-        margin-bottom: 20px;
+        width: 100% !important;
+        font-size: 10px !important;
+        padding: 0px !important;
+        height: 35px !important;
     }
 
     .chance-text {
@@ -60,7 +52,7 @@ st.markdown("""
     }
 
     .pool-slot {
-        height: 12px; width: 35px; border-radius: 2px; border: 1px solid white;
+        height: 10px; width: 100%; border-radius: 2px; border: 1px solid white;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,28 +95,21 @@ def hitung_feedback(guess, target):
         if g_temp[i] != "USED" and g_temp[i] in t_temp:
             b_warna += 1
             t_temp[t_temp.index(g_temp[i])] = "DONE"
-    salah = len(target) - (b_pos + b_warna)
-    return f"{b_pos} benar posisi, {b_warna} benar warna, {salah} salah"
+    return b_pos, b_warna
 
 # --- 4. TAMPILAN ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    st.markdown('<div style="color:white; text-align:center; margin-bottom:20px;">PILIH LEVEL UNTUK MULAI:</div>', unsafe_allow_html=True)
-    
-    # Tombol Menu dengan Simbol di Atas
-    col_m1, col_m2, col_m3 = st.columns(3)
-    with col_m1:
-        if st.button("🟢\nMUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
-    with col_m2:
-        if st.button("🟡\nSEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
-    with col_m3:
-        if st.button("🔴\nSULIT", use_container_width=True): start_game("Sulit"); st.rerun()
+    st.markdown('<div style="color:white; text-align:center; margin-bottom:10px;">PILIH LEVEL:</div>', unsafe_allow_html=True)
+    # Tombol Level: Simbol di KIRI tulisan
+    if st.button("🟢 MUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
+    if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
+    if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
-    # Game Aktif
-    st.markdown(f'<div class="chance-text">Sisa Tebakan: {st.session_state.chances}x</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="chance-text">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
 
-    # Petunjuk Warna
+    # Petunjuk Warna (Sejajar di atas)
     st.write("Warna Rahasia Terdiri Dari:")
     p_cols = st.columns(len(st.session_state.pool))
     for idx, p_color in enumerate(st.session_state.pool):
@@ -132,7 +117,7 @@ else:
 
     st.write("---")
 
-    # AREA TEBAKAN (JARAK 0.25CM)
+    # AREA TEBAKAN (JARAK RAPAT & HORIZONTAL)
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
@@ -142,16 +127,17 @@ else:
     st.write("---")
     
     if not st.session_state.game_over:
-        if st.button("CEK JAWABAN ✅", use_container_width=True):
+        if st.button("CEK JAWABAN (OK) ✅", use_container_width=True):
             if "Kosong" not in st.session_state.guesses:
                 st.session_state.chances -= 1
-                fb = hitung_feedback(st.session_state.guesses, st.session_state.target)
-                st.session_state.history.append({'g': list(st.session_state.guesses), 'f': fb})
+                b_pos, b_warna = hitung_feedback(st.session_state.guesses, st.session_state.target)
+                fb_text = f"{b_pos} Benar, {b_warna} Salah Posisi"
+                st.session_state.history.append({'g': list(st.session_state.guesses), 'f': fb_text})
                 
                 if st.session_state.guesses == st.session_state.target:
                     st.balloons(); st.success("🎉 MENANG!"); st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
-                    st.error(f"❌ KALAH! Jawabannya: {', '.join(st.session_state.target)}"); st.session_state.game_over = True
+                    st.error("❌ KESEMPATAN HABIS!"); st.session_state.game_over = True
                 st.rerun()
     else:
         if st.button("MAIN LAGI 🔄", use_container_width=True):
@@ -163,5 +149,5 @@ else:
         st.write("### 📜 RIWAYAT:")
         for h in reversed(st.session_state.history):
             st.info(h['f'])
-            row = "".join([f'<div style="display:inline-block; width:18px; height:18px; background-color:{WARNA_HEX[c]}; margin-right:4px; border:1px solid white; border-radius:3px;"></div>' for c in h['g']])
-            st.markdown(row, unsafe_allow_html=True)
+            row_html = "".join([f'<div style="display:inline-block; width:15px; height:15px; background-color:{WARNA_HEX[c]}; margin-right:4px; border:1px solid white; border-radius:2px;"></div>' for c in h['g']])
+            st.markdown(row_html, unsafe_allow_html=True)
