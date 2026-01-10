@@ -4,83 +4,70 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (HARD FIX UNTUK JARAK SANGAT RAPAT) ---
+# --- 2. CSS CUSTOM (STRATEGI GRID UNTUK LAYAR PENUH) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
     
-    /* MEMAKSA JARAK ANTAR KOLOM JADI MINIMAL */
+    /* MENGATUR CONTAINER UTAMA AGAR RAPAT */
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+
+    /* PAKSA KOLOM JADI GRID SESUAI LEVEL */
     [data-testid="stHorizontalBlock"] {
-        gap: 2px !important; 
-        justify-content: center !important;
-        flex-wrap: nowrap !important; /* Mencegah kotak turun ke bawah */
-    }
-
-    /* MENGHAPUS PADDING BAWAAN STREAMLIT PADA KOLOM */
-    [data-testid="column"] {
-        padding: 0px !important;
-        margin: 0px -2px !important; /* Teknik negative margin untuk merapatkan */
-        min-width: 0px !important;
-        flex: 0 0 auto !important;
-        width: 60px !important;
-    }
-
-    .title-text {
-        text-align: center; font-family: 'Bungee Shade', cursive; 
-        font-size: 24px; color: white; margin-bottom: 10px;
-    }
-
-    /* KOTAK WARNA: LANGSING SESUAI GAMBAR */
-    .card-slot {
-        width: 58px !important;
-        height: 90px !important;
-        border-radius: 6px;
-        border: 1.5px solid #ffffff;
-        margin: 0 auto 5px auto;
-    }
-
-    /* TOMBOL GANTI: PRESISI DI BAWAH KOTAK */
-    .stButton > button {
-        width: 58px !important;
-        height: 30px !important;
-        font-size: 10px !important;
-        padding: 0px !important;
-        border-radius: 4px !important;
-        margin: 0 auto !important;
-    }
-
-    /* KOTAK KECIL WARNA RAHASIA (TENGAH) */
-    .pool-container {
-        display: flex;
-        justify-content: center;
-        gap: 5px;
-        margin-bottom: 15px;
-    }
-    .pool-box {
-        width: 18px;
-        height: 18px;
-        border-radius: 3px;
-        border: 1px solid white;
-    }
-
-    /* TOMBOL CEK JAWABAN: MEMANJANG HORIZONTAL */
-    .cek-wrapper .stButton > button {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
+        gap: 5px !important; /* Jarak antar kotak sangat tipis */
         width: 100% !important;
-        height: 50px !important;
+    }
+
+    /* KOTAK WARNA: LANGSING (POTRAIT) */
+    .card-slot {
+        aspect-ratio: 2 / 3.5; /* Proporsi tinggi untuk layar potrait */
+        width: 100%;
+        border-radius: 6px;
+        border: 2px solid #ffffff;
+        margin-bottom: 5px;
+    }
+
+    /* TOMBOL GANTI DI BAWAH KOTAK */
+    .stButton > button {
+        width: 100% !important;
+        font-size: 10px !important;
+        height: 35px !important;
+        padding: 0px !important;
+    }
+
+    /* TOMBOL CEK JAWABAN: BESAR & DI TENGAH */
+    .cek-area {
+        margin-top: 30px;
+        text-align: center;
+    }
+    .cek-area .stButton > button {
+        width: 100% !important;
+        height: 55px !important;
         font-size: 18px !important;
         font-weight: bold !important;
         background-color: #262730 !important;
         border: 2px solid #FFD700 !important;
         color: white !important;
-        margin-top: 20px;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
+    }
+
+    .title-text {
+        text-align: center; font-family: 'Bungee Shade', cursive; 
+        font-size: 26px; color: white; margin-bottom: 20px;
     }
 
     .chance-text {
         text-align: center; font-size: 22px; font-weight: bold;
-        color: #FF4B4B; margin-bottom: 5px; font-family: 'Space Mono', monospace;
+        color: #FF4B4B; margin-bottom: 5px;
     }
+
+    .pool-container {
+        display: flex; justify-content: center; gap: 8px; margin-bottom: 20px;
+    }
+    .pool-box { width: 22px; height: 22px; border-radius: 4px; border: 1px solid #fff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -110,42 +97,52 @@ def ganti_warna(i):
         next_idx = (pool.index(cur) + 1) % len(pool) if cur in pool else 0
         st.session_state.guesses[i] = pool[next_idx]
 
+def hitung_feedback(guess, target):
+    t_temp, g_temp = list(target), list(guess)
+    b_pos, b_warna = 0, 0
+    for i in range(len(t_temp)):
+        if g_temp[i] == t_temp[i]:
+            b_pos += 1
+            t_temp[i], g_temp[i] = "DONE", "USED"
+    for i in range(len(g_temp)):
+        if g_temp[i] != "USED" and g_temp[i] in t_temp:
+            b_warna += 1
+            t_temp[t_temp.index(g_temp[i])] = "DONE"
+    salah = len(target) - (b_pos + b_warna)
+    return f"{b_pos} Benar, {b_warna} Salah Posisi, {salah} Salah"
+
 # --- 4. TAMPILAN ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    st.markdown('<div style="color:white; text-align:center; margin-bottom:15px;">PILIH LEVEL:</div>', unsafe_allow_html=True)
     if st.button("🟢 MUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
     if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
     if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
     st.markdown(f'<div class="chance-text">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
     
-    # 1. WARNA RAHASIA (KOTAK KECIL TENGAH)
-    st.markdown('<div style="color:white; text-align:center; font-size:12px; margin-bottom:5px;">Warna Rahasia Terdiri Dari:</div>', unsafe_allow_html=True)
+    # INDIKATOR WARNA RAHASIA
     pool_html = '<div class="pool-container">'
     for p_color in st.session_state.pool:
         pool_html += f'<div class="pool-box" style="background-color:{WARNA_HEX[p_color]};"></div>'
     pool_html += '</div>'
     st.markdown(pool_html, unsafe_allow_html=True)
 
-    st.write("---")
-
-    # 2. AREA TEBAKAN (RAPAT & SEMPIT)
+    # AREA GAME (GRID OTOMATIS MUAT 1 LAYAR)
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
             st.markdown(f'<div class="card-slot" style="background-color:{WARNA_HEX[st.session_state.guesses[i]]};"></div>', unsafe_allow_html=True)
             st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
-    # 3. TOMBOL CEK JAWABAN (MEMANJANG)
-    st.markdown('<div class="cek-wrapper">', unsafe_allow_html=True)
+    # TOMBOL CEK JAWABAN
+    st.markdown('<div class="cek-area">', unsafe_allow_html=True)
     if not st.session_state.game_over:
         if st.button("Cek Jawaban", use_container_width=True):
             if "Kosong" not in st.session_state.guesses:
                 st.session_state.chances -= 1
-                b_pos = sum(1 for g, t in zip(st.session_state.guesses, st.session_state.target) if g == t)
-                st.session_state.history.append({'g': list(st.session_state.guesses), 'f': f"{b_pos} Benar"})
+                fb = hitung_feedback(st.session_state.guesses, st.session_state.target)
+                st.session_state.history.append({'g': list(st.session_state.guesses), 'f': fb})
                 if st.session_state.guesses == st.session_state.target:
                     st.balloons(); st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
@@ -156,3 +153,12 @@ else:
             st.session_state.game_active = False
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # RIWAYAT TEBAKAN & PERNYATAAN
+    if st.session_state.history:
+        st.write("---")
+        st.write("### 📜 RIWAYAT:")
+        for h in reversed(st.session_state.history):
+            st.info(h['f']) # Pernyataan feedback
+            row_html = "".join([f'<div style="display:inline-block; width:15px; height:15px; background-color:{WARNA_HEX[c]}; margin-right:5px; border:1px solid white; border-radius:2px;"></div>' for c in h['g']])
+            st.markdown(row_html, unsafe_allow_html=True)
