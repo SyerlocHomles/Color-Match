@@ -4,33 +4,33 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (STRATEGI GRID UNTUK LAYAR PENUH) ---
+# --- 2. CSS CUSTOM (OPTIMASI LAYAR HP & TATA LETAK) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
     
-    /* MENGATUR CONTAINER UTAMA AGAR RAPAT */
     .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 
-    /* PAKSA KOLOM JADI GRID SESUAI LEVEL */
+    /* GRID UNTUK KOTAK JAWABAN (1 BARIS PENUH) */
     [data-testid="stHorizontalBlock"] {
         display: grid !important;
         grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
-        gap: 5px !important; /* Jarak antar kotak sangat tipis */
+        gap: 6px !important;
         width: 100% !important;
     }
 
-    /* KOTAK WARNA: LANGSING (POTRAIT) */
+    /* KOTAK WARNA LANGSING (PORTRAIT) */
     .card-slot {
-        aspect-ratio: 2 / 3.5; /* Proporsi tinggi untuk layar potrait */
+        aspect-ratio: 2 / 3.5;
         width: 100%;
-        border-radius: 6px;
+        border-radius: 8px;
         border: 2px solid #ffffff;
         margin-bottom: 5px;
+        box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
     }
 
-    /* TOMBOL GANTI DI BAWAH KOTAK */
+    /* TOMBOL GANTI WARNA DI BAWAH KOTAK */
     .stButton > button {
         width: 100% !important;
         font-size: 10px !important;
@@ -38,11 +38,7 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* TOMBOL CEK JAWABAN: BESAR & DI TENGAH */
-    .cek-area {
-        margin-top: 30px;
-        text-align: center;
-    }
+    /* TOMBOL CEK JAWABAN (MEMANJANG DI BAWAH) */
     .cek-area .stButton > button {
         width: 100% !important;
         height: 55px !important;
@@ -52,6 +48,7 @@ st.markdown("""
         border: 2px solid #FFD700 !important;
         color: white !important;
         border-radius: 12px !important;
+        margin-top: 20px;
     }
 
     .title-text {
@@ -72,21 +69,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 3. LOGIKA GAME ---
-if 'game_active' not in st.session_state:
-    st.session_state.game_active = False
-
 WARNA_LIST = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 WARNA_HEX = {"Kosong": "#333333", "Merah": "#FF0000", "Oren": "#FFA500", "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF"}
 
+if 'game_active' not in st.session_state:
+    st.session_state.game_active = False
+
 def start_game(mode):
-    k = 3 if mode == "Mudah" else 4 if mode == "Sedang" else 5
+    # Penyesuaian Jumlah Kotak & Kesempatan Baru
+    if mode == "Mudah":
+        k, ch = 3, 5
+    elif mode == "Sedang":
+        k, ch = 4, 8
+    else: # Sulit
+        k, ch = 5, 10
+        
     pool = random.sample(WARNA_LIST, k)
     st.session_state.target = [random.choice(pool) for _ in range(k)]
     st.session_state.pool = pool
     st.session_state.max_k = k
     st.session_state.guesses = ["Kosong"] * k
     st.session_state.history = []
-    st.session_state.chances = 5
+    st.session_state.chances = ch
     st.session_state.game_active = True
     st.session_state.game_over = False
 
@@ -100,42 +104,45 @@ def ganti_warna(i):
 def hitung_feedback(guess, target):
     t_temp, g_temp = list(target), list(guess)
     b_pos, b_warna = 0, 0
+    # Cek Warna & Posisi Benar
     for i in range(len(t_temp)):
         if g_temp[i] == t_temp[i]:
             b_pos += 1
             t_temp[i], g_temp[i] = "DONE", "USED"
+    # Cek Warna Benar tapi Salah Posisi
     for i in range(len(g_temp)):
         if g_temp[i] != "USED" and g_temp[i] in t_temp:
             b_warna += 1
             t_temp[t_temp.index(g_temp[i])] = "DONE"
-    salah = len(target) - (b_pos + b_warna)
-    return f"{b_pos} Benar, {b_warna} Salah Posisi, {salah} Salah"
+    return f"{b_pos} Benar, {b_warna} Salah Posisi"
 
 # --- 4. TAMPILAN ---
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    if st.button("🟢 MUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
-    if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
-    if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
+    st.markdown('<div style="color:white; text-align:center; margin-bottom:15px;">PILIH LEVEL:</div>', unsafe_allow_html=True)
+    if st.button("🟢 MUDAH (5 Kesempatan)", use_container_width=True): start_game("Mudah"); st.rerun()
+    if st.button("🟡 SEDANG (8 Kesempatan)", use_container_width=True): start_game("Sedang"); st.rerun()
+    if st.button("🔴 SULIT (10 Kesempatan)", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
+    # Header Game
     st.markdown(f'<div class="chance-text">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
     
-    # INDIKATOR WARNA RAHASIA
+    # Warna yang Mungkin (Asumsi)
     pool_html = '<div class="pool-container">'
     for p_color in st.session_state.pool:
         pool_html += f'<div class="pool-box" style="background-color:{WARNA_HEX[p_color]};"></div>'
     pool_html += '</div>'
     st.markdown(pool_html, unsafe_allow_html=True)
 
-    # AREA GAME (GRID OTOMATIS MUAT 1 LAYAR)
+    # Area Kotak Tebakan
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
             st.markdown(f'<div class="card-slot" style="background-color:{WARNA_HEX[st.session_state.guesses[i]]};"></div>', unsafe_allow_html=True)
             st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
-    # TOMBOL CEK JAWABAN
+    # Tombol Cek Jawaban
     st.markdown('<div class="cek-area">', unsafe_allow_html=True)
     if not st.session_state.game_over:
         if st.button("Cek Jawaban", use_container_width=True):
@@ -143,9 +150,13 @@ else:
                 st.session_state.chances -= 1
                 fb = hitung_feedback(st.session_state.guesses, st.session_state.target)
                 st.session_state.history.append({'g': list(st.session_state.guesses), 'f': fb})
+                
                 if st.session_state.guesses == st.session_state.target:
-                    st.balloons(); st.session_state.game_over = True
+                    st.balloons()
+                    st.success("🎉 LUAR BIASA! KAMU MENANG!")
+                    st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
+                    st.error(f"❌ KESEMPATAN HABIS! Jawabannya: {', '.join(st.session_state.target)}")
                     st.session_state.game_over = True
                 st.rerun()
     else:
@@ -154,11 +165,11 @@ else:
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # RIWAYAT TEBAKAN & PERNYATAAN
+    # Riwayat & Pernyataan
     if st.session_state.history:
         st.write("---")
-        st.write("### 📜 RIWAYAT:")
+        st.write("### 📜 RIWAYAT TEBAKAN:")
         for h in reversed(st.session_state.history):
             st.info(h['f']) # Pernyataan feedback
-            row_html = "".join([f'<div style="display:inline-block; width:15px; height:15px; background-color:{WARNA_HEX[c]}; margin-right:5px; border:1px solid white; border-radius:2px;"></div>' for c in h['g']])
+            row_html = "".join([f'<div style="display:inline-block; width:18px; height:18px; background-color:{WARNA_HEX[c]}; margin-right:6px; border:1px solid white; border-radius:3px;"></div>' for c in h['g']])
             st.markdown(row_html, unsafe_allow_html=True)
