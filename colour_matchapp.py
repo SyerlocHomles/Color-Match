@@ -4,27 +4,25 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (FIX UKURAN KOTAK & HORIZONTAL SCROLL) ---
+# --- 2. CSS CUSTOM (FIX JARAK 1CM & LAYOUT) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
     
-    /* Container untuk scroll jika layar HP sempit */
-    .game-container {
+    /* PENGATURAN JARAK ANTAR KOLOM 1CM (~38px) */
+    [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
-        overflow-x: auto !important; /* Memungkinkan scroll ke samping */
-        padding: 10px 0 !important;
-        gap: 15px !important;
-        justify-content: flex-start !important;
-        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        gap: 38px !important; /* Jarak standar 1cm di layar */
+        overflow-x: auto !important;
+        padding-bottom: 10px;
     }
 
-    /* Memaksa kolom Streamlit mengikuti aturan scroll */
-    [data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
+    [data-testid="column"] {
+        flex-shrink: 0 !important;
+        width: 95px !important; /* Sesuai instruksi sebelumnya 2.5cm */
     }
 
     .title-text {
@@ -32,21 +30,22 @@ st.markdown("""
         font-size: 24px; color: white; margin-bottom: 10px;
     }
 
-    /* KOTAK WARNA: Lebar 2.5cm (~95px) & Tinggi 3cm (~115px) */
+    /* KOTAK WARNA: Lebar 2.5cm & Tinggi 3cm */
     .card-slot {
         width: 95px !important;
         height: 115px !important;
         border-radius: 8px;
         border: 2px solid #fff;
         margin-bottom: 10px;
-        flex-shrink: 0 !important; /* Mencegah kotak jadi gepeng */
     }
 
     .stButton > button {
-        width: 95px !important; /* Lebar tombol sama dengan kotak */
+        width: 95px !important;
         font-size: 11px !important;
         height: 40px !important;
         border-radius: 6px !important;
+        background-color: #333 !important;
+        color: white !important;
     }
 
     .chance-text {
@@ -54,9 +53,8 @@ st.markdown("""
         color: #FF4B4B; margin-bottom: 15px; font-family: 'Space Mono', monospace;
     }
 
-    /* Baris petunjuk warna di atas dibuat kecil saja */
     .pool-slot {
-        height: 12px; width: 40px; border-radius: 2px; border: 1px solid white;
+        height: 12px; width: 35px; border-radius: 2px; border: 1px solid white;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -106,24 +104,23 @@ def hitung_feedback(guess, target):
 st.markdown('<div class="title-text">COLOUR MATCH</div>', unsafe_allow_html=True)
 
 if not st.session_state.game_active:
-    # Tampilan Menu Awal
-    st.markdown('<div style="color:white; text-align:center;">PILIH LEVEL:</div>', unsafe_allow_html=True)
+    st.markdown('<div style="color:white; text-align:center; margin-bottom:10px;">PILIH LEVEL UNTUK MULAI:</div>', unsafe_allow_html=True)
     if st.button("🟢 MUDAH", use_container_width=True): start_game("Mudah"); st.rerun()
     if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
     if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
     # Game Aktif
-    st.markdown(f'<div class="chance-text">Kesempatan: {st.session_state.chances}x</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="chance-text">Sisa Tebakan: {st.session_state.chances}x</div>', unsafe_allow_html=True)
 
-    # Petunjuk Warna (Kecil)
-    st.write("Warna Rahasia Terdiri Dari:")
+    # Petunjuk Warna (Tetap Rapi di Atas)
+    st.write("Warna Rahasia Berasal Dari:")
     p_cols = st.columns(len(st.session_state.pool))
     for idx, p_color in enumerate(st.session_state.pool):
         p_cols[idx].markdown(f'<div class="pool-slot" style="background-color:{WARNA_HEX[p_color]};"></div>', unsafe_allow_html=True)
 
     st.write("---")
 
-    # AREA TEBAKAN (HORIZONTALLY SCROLLABLE)
+    # AREA TEBAKAN DENGAN JARAK 1CM
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
@@ -140,16 +137,16 @@ else:
                 st.session_state.history.append({'g': list(st.session_state.guesses), 'f': fb})
                 
                 if st.session_state.guesses == st.session_state.target:
-                    st.balloons(); st.success("🎉 MENANG!"); st.session_state.game_over = True
+                    st.balloons(); st.success("🎉 KAMU MENANG!"); st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
-                    st.error("❌ KALAH!"); st.session_state.game_over = True
+                    st.error(f"❌ KALAH! Jawaban: {', '.join(st.session_state.target)}"); st.session_state.game_over = True
                 st.rerun()
     else:
         if st.button("MAIN LAGI 🔄", use_container_width=True):
             st.session_state.game_active = False
             st.rerun()
 
-    # Riwayat Tebakan
+    # Riwayat
     if st.session_state.history:
         st.write("### 📜 RIWAYAT:")
         for h in reversed(st.session_state.history):
