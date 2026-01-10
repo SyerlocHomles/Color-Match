@@ -4,7 +4,7 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (TETAP SAMA SEPERTI SEBELUMNYA) ---
+# --- 2. CSS CUSTOM (TETAP KONSISTEN & RAPI) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Bungee&family=Space+Mono:wght@400;700&display=swap');
@@ -62,6 +62,7 @@ st.markdown("""
 WARNA_LIST = ["Merah", "Oren", "Kuning", "Hijau", "Biru"]
 WARNA_HEX = {"Kosong": "#333333", "Merah": "#FF0000", "Oren": "#FFA500", "Kuning": "#FFFF00", "Hijau": "#00FF00", "Biru": "#0000FF"}
 
+# Inisialisasi state agar tidak error
 if 'game_active' not in st.session_state:
     st.session_state.game_active = False
 
@@ -70,17 +71,15 @@ def start_game(mode):
     elif mode == "Sedang": k, ch = 4, 8
     else: k, ch = 5, 10
     
-    # Pilih pool warna secara acak dulu
+    # Pilih pool warna dasar untuk level ini
     full_pool = random.sample(WARNA_LIST, k) 
-    # Buat target jawaban
+    # Buat target jawaban (warna bisa berulang)
     target = [random.choice(full_pool) for _ in range(k)]
     
-    # PERBAIKAN DI SINI:
-    # Hanya ambil warna unik yang benar-benar ada di jawaban untuk ditampilkan di kotak kecil
+    # LOGIKA JUJUR: Hanya simpan warna yang BENAR-BENAR ada di jawaban
     st.session_state.display_pool = sorted(list(set(target)))
-    
-    # Tapi pemain tetap bisa memilih dari semua warna pool awal agar tetap menantang
-    st.session_state.full_selection_pool = full_pool 
+    # Pemain tetap bisa memilih dari full_pool agar tetap menantang
+    st.session_state.selection_pool = full_pool 
     
     st.session_state.target = target
     st.session_state.max_k = k
@@ -93,7 +92,7 @@ def start_game(mode):
 
 def ganti_warna(i):
     if not st.session_state.game_over:
-        pool = st.session_state.full_selection_pool
+        pool = st.session_state.selection_pool
         cur = st.session_state.guesses[i]
         next_idx = (pool.index(cur) + 1) % len(pool) if cur in pool else 0
         st.session_state.guesses[i] = pool[next_idx]
@@ -106,7 +105,8 @@ if not st.session_state.game_active:
     if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
     if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
-    if st.session_state.get('won', False):
+    # Cek Kemenangan
+    if st.session_state.won:
         st.balloons()
         st.markdown('<div class="win-text">✨ YOU WIN! ✨</div>', unsafe_allow_html=True)
     elif st.session_state.game_over:
@@ -114,20 +114,24 @@ else:
 
     st.markdown(f'<div style="text-align:center; color:#FF4B4B; font-weight:bold; font-size:20px;">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
     
-    # SEKARANG HANYA MENAMPILKAN WARNA YANG ADA DI JAWABAN
-    st.markdown('<div style="color:white; text-align:center; font-size:12px; margin-bottom:5px;">Warna Rahasia Terdiri Dari:</div>', unsafe_allow_html=True)
-    pool_html = '<div class="pool-container">'
-    for p_color in st.session_state.display_pool:
-        pool_html += f'<div class="pool-box" style="background-color:{WARNA_HEX[p_color]};"></div>'
-    pool_html += '</div>'
-    st.markdown(pool_html, unsafe_allow_html=True)
+    # TAMPILKAN ASUMSI WARNA (Hanya yang ada di jawaban)
+    if 'display_pool' in st.session_state:
+        st.markdown('<div style="color:white; text-align:center; font-size:12px; margin-bottom:5px;">Warna Rahasia Terdiri Dari:</div>', unsafe_allow_html=True)
+        pool_html = '<div class="pool-container">'
+        for p_color in st.session_state.display_pool:
+            pool_html += f'<div class="pool-box" style="background-color:{WARNA_HEX[p_color]};"></div>'
+        pool_html += '</div>'
+        st.markdown(pool_html, unsafe_allow_html=True)
 
+    # Area Tebakan
     cols = st.columns(st.session_state.max_k)
     for i in range(st.session_state.max_k):
         with cols[i]:
-            st.markdown(f'<div class="card-slot" style="background-color:{WARNA_HEX[st.session_state.guesses[i]]};"></div>', unsafe_allow_html=True)
+            bg_color = WARNA_HEX.get(st.session_state.guesses[i], "#333333")
+            st.markdown(f'<div class="card-slot" style="background-color:{bg_color};"></div>', unsafe_allow_html=True)
             st.button("Ganti", key=f"btn_{i}", on_click=ganti_warna, args=(i,))
 
+    # Tombol Aksi
     st.markdown('<div class="cek-area">', unsafe_allow_html=True)
     if not st.session_state.game_over:
         if st.button("Cek Jawaban", use_container_width=True):
@@ -142,9 +146,11 @@ else:
                 st.rerun()
     else:
         if st.button("Main Lagi", use_container_width=True):
-            st.session_state.game_active = False; st.rerun()
+            st.session_state.game_active = False
+            st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Riwayat
     if st.session_state.history:
         st.write("---")
         for h in reversed(st.session_state.history):
