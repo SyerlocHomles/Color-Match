@@ -4,15 +4,13 @@ import random
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Colour Match Master", layout="centered")
 
-# --- 2. CSS CUSTOM (DENGAN ANIMASI KEMENANGAN) ---
+# --- 2. CSS CUSTOM (TETAP SAMA SEPERTI SEBELUMNYA) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Bungee&family=Space+Mono:wght@400;700&display=swap');
     #MainMenu, footer, header {visibility: hidden;}
-    
     .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 
-    /* ANIMASI TEKS MENANG BERDENYUT */
     @keyframes pulse {
         0% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.1); opacity: 0.8; }
@@ -20,55 +18,34 @@ st.markdown("""
     }
 
     .win-text {
-        text-align: center;
-        font-family: 'Bungee', cursive;
-        font-size: 40px;
-        color: #FFD700;
+        text-align: center; font-family: 'Bungee', cursive;
+        font-size: 40px; color: #FFD700;
         text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-        animation: pulse 1s infinite;
-        margin-top: 20px;
+        animation: pulse 1s infinite; margin-top: 20px;
     }
 
-    .win-subtext {
-        text-align: center;
-        font-family: 'Space Mono', monospace;
-        font-size: 16px;
-        color: white;
-        margin-bottom: 20px;
-    }
-
-    /* TATA LETAK GRID & KOTAK (DARI KODE SEBELUMNYA) */
     [data-testid="stHorizontalBlock"] {
         display: grid !important;
         grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
-        gap: 6px !important;
-        width: 100% !important;
+        gap: 6px !important; width: 100% !important;
     }
 
     .card-slot {
-        aspect-ratio: 2 / 3.5;
-        width: 100%;
-        border-radius: 8px;
-        border: 2px solid #ffffff;
+        aspect-ratio: 2 / 3.5; width: 100%;
+        border-radius: 8px; border: 2px solid #ffffff;
         margin-bottom: 5px;
     }
 
     .stButton > button {
-        width: 100% !important;
-        font-size: 10px !important;
-        height: 32px !important;
-        white-space: nowrap !important;
+        width: 100% !important; font-size: 9px !important;
+        height: 32px !important; white-space: nowrap !important;
     }
 
     .cek-area .stButton > button {
-        width: 100% !important;
-        height: 55px !important;
-        font-size: 18px !important;
-        font-weight: bold !important;
-        background-color: #262730 !important;
-        border: 2px solid #FFD700 !important;
-        color: white !important;
-        border-radius: 12px !important;
+        width: 100% !important; height: 55px !important;
+        font-size: 18px !important; font-weight: bold !important;
+        background-color: #262730 !important; border: 2px solid #FFD700 !important;
+        color: white !important; border-radius: 12px !important; margin-top: 20px;
     }
 
     .title-text {
@@ -92,9 +69,20 @@ def start_game(mode):
     if mode == "Mudah": k, ch = 3, 5
     elif mode == "Sedang": k, ch = 4, 8
     else: k, ch = 5, 10
-    pool = random.sample(WARNA_LIST, k)
-    st.session_state.target = [random.choice(pool) for _ in range(k)]
-    st.session_state.pool = pool
+    
+    # Pilih pool warna secara acak dulu
+    full_pool = random.sample(WARNA_LIST, k) 
+    # Buat target jawaban
+    target = [random.choice(full_pool) for _ in range(k)]
+    
+    # PERBAIKAN DI SINI:
+    # Hanya ambil warna unik yang benar-benar ada di jawaban untuk ditampilkan di kotak kecil
+    st.session_state.display_pool = sorted(list(set(target)))
+    
+    # Tapi pemain tetap bisa memilih dari semua warna pool awal agar tetap menantang
+    st.session_state.full_selection_pool = full_pool 
+    
+    st.session_state.target = target
     st.session_state.max_k = k
     st.session_state.guesses = ["Kosong"] * k
     st.session_state.history = []
@@ -105,7 +93,7 @@ def start_game(mode):
 
 def ganti_warna(i):
     if not st.session_state.game_over:
-        pool = st.session_state.pool
+        pool = st.session_state.full_selection_pool
         cur = st.session_state.guesses[i]
         next_idx = (pool.index(cur) + 1) % len(pool) if cur in pool else 0
         st.session_state.guesses[i] = pool[next_idx]
@@ -118,19 +106,18 @@ if not st.session_state.game_active:
     if st.button("🟡 SEDANG", use_container_width=True): start_game("Sedang"); st.rerun()
     if st.button("🔴 SULIT", use_container_width=True): start_game("Sulit"); st.rerun()
 else:
-    # Jika Menang, Tampilkan Animasi
     if st.session_state.get('won', False):
         st.balloons()
         st.markdown('<div class="win-text">✨ YOU WIN! ✨</div>', unsafe_allow_html=True)
-        st.markdown('<div class="win-subtext">Hebat! Kamu berhasil memecahkan kode warna.</div>', unsafe_allow_html=True)
     elif st.session_state.game_over:
-        st.error(f"❌ KESEMPATAN HABIS! Jawabannya: {', '.join(st.session_state.target)}")
+        st.error(f"❌ Jawabannya: {', '.join(st.session_state.target)}")
 
-    # Header Game & Area Kotak
     st.markdown(f'<div style="text-align:center; color:#FF4B4B; font-weight:bold; font-size:20px;">Sisa: {st.session_state.chances}x</div>', unsafe_allow_html=True)
     
+    # SEKARANG HANYA MENAMPILKAN WARNA YANG ADA DI JAWABAN
+    st.markdown('<div style="color:white; text-align:center; font-size:12px; margin-bottom:5px;">Warna Rahasia Terdiri Dari:</div>', unsafe_allow_html=True)
     pool_html = '<div class="pool-container">'
-    for p_color in st.session_state.pool:
+    for p_color in st.session_state.display_pool:
         pool_html += f'<div class="pool-box" style="background-color:{WARNA_HEX[p_color]};"></div>'
     pool_html += '</div>'
     st.markdown(pool_html, unsafe_allow_html=True)
@@ -146,23 +133,18 @@ else:
         if st.button("Cek Jawaban", use_container_width=True):
             if "Kosong" not in st.session_state.guesses:
                 st.session_state.chances -= 1
-                # Hitung Benar
                 b_pos = sum(1 for g, t in zip(st.session_state.guesses, st.session_state.target) if g == t)
                 st.session_state.history.append({'g': list(st.session_state.guesses), 'f': f"{b_pos} Benar"})
-                
                 if st.session_state.guesses == st.session_state.target:
-                    st.session_state.won = True
-                    st.session_state.game_over = True
+                    st.session_state.won = True; st.session_state.game_over = True
                 elif st.session_state.chances <= 0:
                     st.session_state.game_over = True
                 st.rerun()
     else:
         if st.button("Main Lagi", use_container_width=True):
-            st.session_state.game_active = False
-            st.rerun()
+            st.session_state.game_active = False; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Riwayat Tebakan
     if st.session_state.history:
         st.write("---")
         for h in reversed(st.session_state.history):
